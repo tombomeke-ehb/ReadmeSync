@@ -3,16 +3,57 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 
+// ============================================================================
+// 🧩 ReadmeSync.cs
+// ----------------------------------------------------------------------------
+// A command-line tool that scans a C# project and auto-generates or updates
+// a README or ROADMAP file based on namespaces, classes, public methods,
+// and // TODO comments.
+//
+// 🧠 Features
+// - Detects repository root automatically (.git, .sln, README.md, LICENSE)
+// - Keeps manual content above marker intact
+// - Creates structured markdown summary of codebase
+// - Supports optional GitHub URL linking
+//
+// ⚙️ Usage
+//   readmesync [scan-root] [output-file] [optional-repo-url]
+//
+// Example:
+//   readmesync . README.md https://github.com/tombomeke-ehb/ReadmeSync
+//
+// 💡 Notes
+// - Safe to run multiple times; it only replaces below the marker
+// - Compatible with any .NET 8.0+ project
+// - Emojis and output format can be customized easily
+//
+// © 2025 Tombomeke Studios - All rights reserved
+// ============================================================================
+
+
 namespace ReadmeSync
 {
     internal class Program
     {
+        // ============================================================
+        // 🧠 Developer Notes
+        // ============================================================
+        // - You can safely modify emoji lists, section headings, and
+        //   markdown formatting above without breaking functionality.
+        // - To extend to other languages (e.g. TypeScript or Python),
+        //   adjust regex patterns for namespaces/classes/methods.
+        // - Future improvement ideas:
+        //   • Add config file (readmesync.json)
+        //   • Add support for excluding folders
+        //   • Add color-coded summary output
         static void Main(string[] args)
         {
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("🛠️ ReadmeSync – Automatically update README or ROADMAP with project code overview");
             Console.ResetColor();
             Console.WriteLine("--------------------------------------------------------------------------\n");
+
+
 
             try
             {
@@ -77,11 +118,17 @@ namespace ReadmeSync
                 {
                     string text = File.ReadAllText(f);
 
+                    // Match namespace declarations: e.g. "namespace MyApp.Core"
                     string ns = Regex.Match(text, @"namespace\s+([A-Za-z0-9_.]+)", RegexOptions.Compiled).Groups[1].Value.Trim();
+
+                    // Match class declarations, ignoring commented-out or inline "className" words
                     string cls = Regex.Match(text, @"(?<!\/\/.*)(?<![A-Za-z0-9_])class\s+([A-Za-z0-9_]+)", RegexOptions.Compiled).Groups[1].Value.Trim();
+
                     if (string.IsNullOrWhiteSpace(ns) || string.IsNullOrWhiteSpace(cls))
                         return null;
 
+
+                    // Match all public methods: e.g. "public void DoThing()"
                     var methods = Regex.Matches(text, @"public\s+[A-Za-z0-9_<>,\[\]\s]+\s+([A-Za-z0-9_]+)\s*\(", RegexOptions.Compiled)
                         .Cast<Match>()
                         .Select(m => m.Groups[1].Value)
@@ -113,7 +160,12 @@ namespace ReadmeSync
                 .OrderBy(g => g.Key)
                 .ToList();
 
-                // 9) Stats
+                // ============================================================
+                // 📊 Project Statistics
+                // ============================================================
+                // These aggregate counts are used to display the summary line
+                // at the top of the generated markdown file. The numbers reflect
+                // total namespaces, classes, public methods, and TODOs found.
                 int nsCount = files.Count;
                 int classCount = files.Sum(g => g.Count());
                 int methodCount = files.Sum(g => g.SelectMany(c => c.Methods).Count());
@@ -129,13 +181,40 @@ namespace ReadmeSync
                         manual = existing[..marker].TrimEnd() + "\n\n";
                 }
 
-                // 11) Write
+                // ============================================================
+                //  🧮 Code Overview Writer
+                // ============================================================
+
+                // The following block writes the auto-generated README/ROADMAP section.
+                // It merges the manually written content above the marker with the
+                // structured code overview below.
                 using var sw = new StreamWriter(outputFile, false);
                 sw.WriteLine(manual);
                 sw.WriteLine("<!-- AUTO-GENERATED BELOW – DO NOT EDIT -->");
                 sw.WriteLine("\n# 🧮 Code Overview (auto-generated)\n");
                 sw.WriteLine($"_Last updated: **{DateTime.Now:yyyy-MM-dd HH:mm}**_\n");
                 sw.WriteLine($"📊 **{nsCount} Namespaces · {classCount} Classes · {methodCount} Methods · {todoCount} TODOs**\n");
+
+
+                // ============================================================
+                //  🎨 Namespace Emojis (Customizable / Randomized)
+                // ============================================================
+                //
+                // This array defines the emoji icons used for each namespace header
+                // in the generated markdown.
+                //
+                // 🧩 TIP: You can freely modify these emojis or replace them with
+                // any text/symbols you want (e.g. “🧠”, “💻”, “🎮”).
+                //
+                // By default, the generator cycles through them in order, but because
+                // the emoji index wraps using modulo arithmetic (`% emojis.Length`),
+                // the order will appear pseudo-random for longer project structures.
+                //
+                // If you’d like *true randomization*, replace the line:
+                //     string nsEmoji = emojis[eIndex++ % emojis.Length];
+                // with:
+                //     string nsEmoji = emojis[new Random().Next(emojis.Length)];
+                //
 
                 string[] emojis = { "🧱", "⚔️", "🧙", "🏹", "🐉", "🏰", "🧭", "🪄", "🧰", "🎯", "📦", "🧩" };
                 int eIndex = 0;
@@ -173,6 +252,12 @@ namespace ReadmeSync
                 Console.ResetColor();
                 Console.WriteLine($"📁 Output file: {Path.GetFullPath(outputFile)}\n");
             }
+            // ============================================================
+            // ❗ Error Handling
+            // ============================================================
+            // We catch *all* exceptions here so that the CLI never crashes
+            // silently during automation (e.g. in CI/CD pipelines).
+            // Instead, errors are printed in red to the console.
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -185,6 +270,16 @@ namespace ReadmeSync
         // ============================================================
         // 🧭 Nearest Repo Root Finder (prefers closest marker upward)
         // ============================================================
+
+        /// <summary>
+        /// Recursively searches upward from the given directory to find the most
+        /// likely repository root (preferring .git, README, LICENSE, or .sln).
+        /// </summary>
+        /// <param name="startPath">Starting directory to begin search.</param>
+        /// <param name="reason">Outputs explanation of why this directory was chosen.</param>
+        /// <returns>
+        /// Absolute path to the nearest detected repo root, or null if none found.
+        /// </returns>
         private static string? FindRepoRootNearest(string startPath, out string? reason)
         {
             reason = null;
