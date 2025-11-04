@@ -43,17 +43,35 @@ Originally created for **RPG Manager** by **Tombomeke Studios**, later expanded 
 ---
 
 ## 🛠 Installation
-Clone and run locally:
+
+### 🧩 Option 1 — via NuGet (recommended)
+Install the tool globally on your system:
+
+dotnet tool install -g ReadmeSync
+
+Once installed, you can run it from anywhere:
+
+readmesync . README.md
+
+Or, to generate a roadmap with clickable GitHub links:
+
+readmesync . ROADMAP.md https://github.com/YourName/YourRepo
+
+Update the tool anytime with:
+
+dotnet tool update -g ReadmeSync
+
+---
+
+### 🧰 Option 2 — Build from source
+If you want to modify or debug ReadmeSync locally:
 
 git clone https://github.com/tombomeke-ehb/ReadmeSync.git  
 cd ReadmeSync  
-dotnet run -- "C:\path\to\your\project" "README.md" "https://github.com/YourUser/YourRepo"
+dotnet run --project ReadmeSync -- . README.md
 
-Quick example (generate a roadmap for the current folder):
-
-dotnet run -- . ROADMAP.md
-
-💡 You can omit the third argument if you don’t want clickable GitHub links.
+💡 Tip: You can use ReadmeSync as part of an automated workflow (e.g., GitHub Actions or commit hooks)
+to keep your documentation always in sync with your source code.
 
 ---
 
@@ -190,21 +208,23 @@ Creator of **RPG Manager** and developer of **ReadmeSync**.
 ---
 
 ## 🪪 License
-**ReadmeSync License (Restricted Use)**  
+**Tombomeke Studios License (MIT-Modified)**  
 
-© 2025 Tombomeke Studios. All rights reserved.
+© 2025 Tom Dekoning — Tombomeke Studios. All rights reserved.
 
-You are granted a non-exclusive, non-transferable, revocable license to:
-- Use this software and binaries for personal or internal projects.  
-- View and study the source code for educational or private purposes.
+Permission is hereby granted, free of charge, to any person obtaining a copy  
+of this software and associated documentation files (the “Software”), to use,  
+study, and modify the Software for **personal or internal educational purposes only**,  
+subject to the following conditions:
 
-You are not permitted to:
-- Redistribute or publicly share this software.  
-- Modify and redistribute altered versions.  
-- Sell, sublicense, or rebrand this software.  
-- Remove or alter copyright or attribution.
+- The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.  
+- Redistribution of the Software, in original or modified form, is **not permitted** without prior written consent from Tombomeke Studios.  
+- The Software may **not** be sold, sublicensed, or used in any commercial product or service.  
+- Credit must be given where used:  
+  “ReadmeSync by Tombomeke Studios (Tom Dekoning)”.
 
-You may link to this repository and reference the project by name with credit:  
-"ReadmeSync by Tombomeke Studios (Tom Dekoning)"
-
-For commercial use, redistribution, or modification rights, please contact **Tombomeke Studios** directly.
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,  
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE  
+AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES  
+OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF,  
+OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
