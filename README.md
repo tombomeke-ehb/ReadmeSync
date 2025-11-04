@@ -15,4 +15,19 @@ manual section intact while automatically updating the technical summary below
 a special marker:
 
 ```markdown
+
+
 <!-- AUTO-GENERATED BELOW – DO NOT EDIT -->
+
+# 🧮 Code Overview (auto-generated)
+
+_Last updated: **2025-11-04 19:37**_
+
+📊 **1 Namespaces · 1 Classes · 0 Methods · 0 TODOs**
+
+
+## 🧱 ReadmeSync
+
+### [Program.cs]([YOUR_REPOSITORY_URL_HERE]/ReadmeSync/Program.cs)
+_No public methods found._
+

@@ -1,0 +1,37 @@
+name: 🚀 Publish .NET Tool
+
+on:
+  push:
+    tags:
+      - 'v*'  # Run this workflow whenever a tag like v1.0.0, v2.0.1, etc. is pushed
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 🧩 1️⃣ Checkout repository
+      - name: 🧩 Checkout repository
+        uses: actions/checkout@v4
+
+      # 🧰 2️⃣ Setup .NET SDK
+      - name: 🧰 Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      # 📦 3️⃣ Restore dependencies (optional, but good practice)
+      - name: 📦 Restore dependencies
+        run: dotnet restore
+
+      # ⚙️ 4️⃣ Build & pack your tool
+      - name: ⚙️ Build & pack NuGet tool
+        run: dotnet pack -c Release
+
+      # 🚀 5️⃣ Publish the package to NuGet.org
+      - name: 🚀 Publish to NuGet.org
+        run: dotnet nuget push **/nupkg/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      # 📢 6️⃣ Optional success message
+      - name: ✅ Success Message
+        run: echo "🎉 Successfully published ReadmeSync to NuGet.org!"
