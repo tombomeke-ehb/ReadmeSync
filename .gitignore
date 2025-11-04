@@ -1,0 +1,40 @@
+# Visual Studio / Rider / VSCode
+.vs/
+.vscode/
+.idea/
+
+# Build output
+bin/
+obj/
+out/
+*.user
+*.suo
+*.sln
+
+# NuGet packages
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+
+# Logs & temporary
+*.log
+*.tmp
+*.cache
+*.pidb
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Publish artifacts
+publish/
+*.exe
+*.dll
+*.pdb
+
+# User-specific configs
+*.userprefs
+
+# JetBrains Rider files
+*.DotSettings.user
