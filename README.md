@@ -44,7 +44,7 @@ Originally created for **RPG Manager** by **Tombomeke Studios**, later expanded 
 
 ## 🛠 Installation
 
-### 🧩 Option 1 — via NuGet[https://www.nuget.org/packages/ReadmeSync] (recommended)
+### 🧩 Option 1 — via [NuGet](https://www.nuget.org/packages/ReadmeSync) (recommended)
 
 Install the tool globally on your system:
 ```
