@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'  # Run this workflow whenever a tag like v1.0.0, v2.0.1, etc. is pushed
+  release:
+    types: [published]
 
 jobs:
   publish:
