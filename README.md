@@ -3,7 +3,7 @@
 > based on your project’s actual source code — namespaces, classes, public methods, and // TODO:s.
 
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white)](#)
-[![License](https://img.shields.io/badge/license-Proprietary%20(Restricted)-orange)](#license)
+[![License](https://img.shields.io/badge/license-Tombomeke%20Studios%20(MIT%20Modified)-orange)](#license)
 [![Build](https://img.shields.io/badge/GitHub%20Actions-Publish%20on%20Tag-green)](#-automated-publishing)
 [![Release](https://img.shields.io/github/v/release/tombomeke-ehb/ReadmeSync?color=blue&label=latest)](https://github.com/tombomeke-ehb/ReadmeSync/releases)
 [![Issues](https://img.shields.io/github/issues/tombomeke-ehb/ReadmeSync)](https://github.com/tombomeke-ehb/ReadmeSync/issues)
