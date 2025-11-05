@@ -1,6 +1,6 @@
 # 🧩 ReadmeSync
-> ⚙️ A lightweight C# CLI that automatically generates or updates **README** / **ROADMAP** files  
-> based on your project’s actual source code — namespaces, classes, public methods, and // TODO:s.
+> ⚙️ A lightweight CLI that automatically generates or updates **README** / **ROADMAP** files  
+> based on your project’s actual source code — namespaces/packages, classes, public methods, and // TODO: comments.
 
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white)](#)
 [![License](https://img.shields.io/badge/license-Tombomeke%20Studios%20(MIT%20Modified)-orange)](#license)
@@ -12,10 +12,15 @@
 ---
 
 ## ✨ Features
-- 🧠 Automatically documents your C# project structure  
+- 🧠 Automatically documents your project structure  
 - 🧩 Merges updates directly into existing README / ROADMAP files  
 - 🔗 Optionally adds clickable GitHub file links  
-- ⚙️ Supports namespaces, classes, public methods, and // TODO: parsing  
+- ⚙️ Detects and lists:
+  - Namespaces / Packages  
+  - Classes  
+  - Public methods  
+  - // TODO: comments  
+- 🌍 Multi-language support: C# and Java  
 - 🚀 CLI-based — no dependencies, no setup required  
 
 ---
@@ -23,79 +28,85 @@
 ## 🧰 Requirements
 - .NET 8.0 SDK or higher  
 - Windows, macOS, or Linux  
-- A C# project containing `.cs` files  
+- A project containing .cs or .java files  
 
 ---
 
 ## 🚀 Overview
-ReadmeSync scans your C# project for `.cs` files and builds a structured overview of:
-- Namespaces  
+ReadmeSync scans your source code and builds a clean, auto-generated overview of:
+- Namespaces / Packages  
 - Classes  
 - Public methods  
-- // TODO: comments  
+- TODO comments  
 
-It then merges this overview into an existing Markdown file, keeping your manual section above the marker and replacing everything below it.
+It then merges that overview into an existing Markdown file, preserving everything above the marker and regenerating everything below it.
 
 <!-- AUTO-GENERATED BELOW – DO NOT EDIT -->
 
-Originally created for **RPG Manager** by **Tombomeke Studios**, later expanded into a general-purpose automation tool.
+Originally created for **RPG Manager** by **Tombomeke Studios**, now expanded into a general-purpose documentation automation tool.
 
 ---
 
 ## 🛠 Installation
 
-### 🧩 Option 1 — via [NuGet](https://www.nuget.org/packages/ReadmeSync) (recommended)
+### 🧩 Option 1 — via NuGet (recommended)
+Install the CLI globally:
 
-Install the tool globally on your system:
 ```
 dotnet tool install -g ReadmeSync
 ```
 Once installed, you can run it from anywhere:
+
 ```
 readmesync . README.md
 ```
-Or, to generate a roadmap with clickable GitHub links:
+To generate a roadmap with clickable GitHub links:
+
 ```
 readmesync . ROADMAP.md https://github.com/YourName/YourRepo
 ```
-Update the tool anytime with:
+Update anytime with:
+
 ```
 dotnet tool update -g ReadmeSync
 ```
 ---
 
 ### 🧰 Option 2 — Build from source
-If you want to modify or debug ReadmeSync locally:
+If you’d like to run it locally or explore how it works:
+
 ```
 git clone https://github.com/tombomeke-ehb/ReadmeSync.git  
 cd ReadmeSync  
 dotnet run --project ReadmeSync -- . README.md
 ```
 
-💡 Tip: You can use ReadmeSync as part of an automated workflow (e.g., GitHub Actions or commit hooks)
-to keep your documentation always in sync with your source code.
+💡 ReadmeSync can also be integrated into CI/CD (e.g. GitHub Actions)
+to keep your documentation automatically in sync with your source code.
 
 ---
 
 ## ⚙️ Usage
-readmesync [project-root] [output-file] [optional-repo-url]
+readmesync [options] [project-root] [output-file] [optional-repo-url]
 
-Argument | Required | Description | Example
---------- | -------- | ------------ | --------
-project-root | ✅ | Directory to scan recursively for .cs files | . or C:\Repos\MyApp
-output-file | ✅ | Markdown file to write/update | README.md, ROADMAP.md, docs/OVERVIEW.md
-optional-repo-url | ❌ | Base repo URL for clickable file links | https://github.com/YourName/YourRepo
+Argument / Option | Required | Description | Example
+----------------- | -------- | ------------ | --------
+project-root | ✅ | Directory to scan recursively | . or C:\Repos\MyApp
+output-file | ✅ | Markdown file to write/update | README.md, ROADMAP.md
+optional-repo-url | ❌ | Base repo URL for clickable links | https://github.com/YourName/YourRepo
+--lang [csharp|java] | ❌ | Choose which language to parse | --lang java
 
 Behavior details:
-- Automatically detects the repository root (.git, .sln, README.md, or .github/)
-- Keeps everything above the marker and regenerates the section below it
-- Links files relative to your repository URL (if provided)
+- Detects repository root automatically (.git, .sln, README.md, .github/, etc.)
+- Keeps everything above <!-- AUTO-GENERATED BELOW – DO NOT EDIT --> intact
+- Regenerates everything below that marker
+- Adds clickable file links if a repository URL is provided
 
 ---
 
 ## 🧭 Manual Section (kept intact)
-You can write your own notes or roadmap above this marker.  
-Everything below it will be auto-generated and replaced on each run.
+Your own content (notes, roadmap, etc.) always stays safe.  
+Only the section below the marker will ever be updated.
 
 # My Project Roadmap
 - Phase 1: Core systems  
@@ -107,123 +118,108 @@ Everything below it will be auto-generated and replaced on each run.
 ---
 
 ## 🔍 What the tool generates
-- Timestamp  
-- Project statistics (namespaces, classes, methods, TODOs)  
-- Sections per namespace  
-- For each class:  
-  - A heading (linked to the repo, if provided)  
-  - List of public methods  
-  - Detected // TODO: items  
+- Timestamp (Last updated: YYYY-MM-DD HH:mm)
+- Project statistics (namespaces/packages, classes, methods, TODOs)
+- Sections per namespace/package
+- For each class:
+  - A heading (linked to file)
+  - Public methods
+  - Found TODOs
 
 ---
 
 ## 🧪 Example output
-<!-- AUTO-GENERATED BELOW – DO NOT EDIT -->
-
 # 🧮 Code Overview (auto-generated)
-_Last updated: 2025-11-04 15:00_
+Language: C#  
+Last updated: 2025-11-04 15:00
 
-📊 11 Namespaces · 27 Classes · 17 Methods · 0 TODOs
+11 Namespaces · 27 Classes · 17 Methods · 0 TODOs
 
-## 🧱 MyApp.Core
-### Program.cs
+MyApp.Core  
+Program.cs  
 Public Methods:
 - Main()
-
----
-
-## 🧰 Typical workflows
-Update README in the repo root:
-readmesync . README.md
-
-Generate a separate ROADMAP:
-readmesync "C:\Repos\GameEngine" "ROADMAP.md"
-
-Add clickable GitHub links:
-readmesync . README.md https://github.com/YourName/YourRepo
 
 ---
 
 ## 🧾 Command reference
 readmesync --help
 
-Usage:  
-readmesync [project-root] [output-file] [optional-repo-url]
-
-Examples:  
+Usage examples:
 readmesync . README.md  
-readmesync . ROADMAP.md https://github.com/YourName/YourRepo  
-
----
-
-## 🖼 Demo
-Example of ReadmeSync generating a roadmap (coming soon...)
+readmesync --lang java ./src ROADMAP.md https://github.com/YourName/YourRepo
 
 ---
 
 ## 🧩 Notes & limitations
-- Designed for C# projects (regex-based parsing)  
-- Extendable to other languages  
+- Designed for C# and Java projects  
+- Detects public methods, TODOs, and class declarations  
 - Skips files without a class definition  
 - Constructors are ignored as methods  
-- The tool regenerates below the marker each time  
+- The section below the marker is fully regenerated each run  
+- Additional language support will be added by Tombomeke Studios in future releases  
 
 ---
 
 ## 🧭 Future roadmap
-- [ ] Config file (`readmesync.json`)  
-- [ ] Support for TypeScript & Java parsing  
+- [ ] Configuration file (readmesync.json)  
+- [ ] Additional language support (Python, TypeScript, etc.)  
 - [ ] Optional Git commit hook for auto-sync  
 - [ ] Template themes for README generation  
+- [ ] Markdown statistics and formatting improvements  
 
 ---
 
 ## 🧾 Changelog
-**v1.0.0 – Initial release**  
-- Basic scanning for namespaces, classes, and methods  
+v1.1.0 – Multi-language update  
+- Added Java support via --lang java  
+- Improved regex detection and documentation output  
+- Refined CLI argument parsing  
+- Better repository root detection  
+
+v1.0.0 – Initial release  
+- Basic C# scanning (namespaces, classes, methods, TODOs)  
 - README/ROADMAP auto-generation  
 - Repository link support  
 
 ---
 
 ## 🤝 Contributing
-Suggestions and pull requests are welcome!  
-Potential future improvements include:
-- Config file support (ReadmeSync.json)
-- Multi-language parsing (TypeScript, Java, Python)
-- Custom CLI flags (--no-todo, --summary-only, etc.)
-- Theming and templating support
+ReadmeSync is open for public usage and feedback.  
+You’re welcome to:
+- Open issues for bugs or feature requests.  
+- Submit pull requests with improvements.  
+
+Code contributions are reviewed manually to ensure they align with Tombomeke Studios’ standards and project direction.
 
 ---
 
 ## 🌍 Related projects
-- [RPG Manager](https://github.com/tombomeke-ehb/RPGManager) — the original project that inspired ReadmeSync  
-- [Tombomeke Studios](https://github.com/tombomeke-ehb) — more personal tools and experiments  
+- RPG Manager — the original inspiration  
+- Tombomeke Studios — more tools and experiments  
 
 ---
 
 ## 👤 Author
-**Tom Dekoning**  
-🎯 **Tombomeke Studios**  
-Creator of **RPG Manager** and developer of **ReadmeSync**.
+Tom Dekoning  
+🎯 Tombomeke Studios  
+Creator of RPG Manager and developer of ReadmeSync.
 
 ---
 
 ## 🪪 License
-**Tombomeke Studios License (MIT-Modified)**  
+Tombomeke Studios License (MIT-Modified)  
 
 © 2025 Tom Dekoning — Tombomeke Studios. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy  
 of this software and associated documentation files (the “Software”), to use,  
-study, and modify the Software for **personal or internal educational purposes only**,  
+study, and modify the Software for personal or internal educational purposes only,  
 subject to the following conditions:
 
-- The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.  
-- Redistribution of the Software, in original or modified form, is **not permitted** without prior written consent from Tombomeke Studios.  
-- The Software may **not** be sold, sublicensed, or used in any commercial product or service.  
-- Credit must be given where used:  
-  “ReadmeSync by Tombomeke Studios (Tom Dekoning)”.
+- Redistribution of the Software, in original or modified form, is not permitted without prior written consent from Tombomeke Studios.  
+- The Software may not be sold, sublicensed, or used in any commercial product or service.  
+- Credit must be given where used: "ReadmeSync by Tombomeke Studios (Tom Dekoning)".
 
 THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,  
 INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE  
