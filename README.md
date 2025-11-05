@@ -94,7 +94,7 @@ Argument / Option | Required | Description | Example
 project-root | ✅ | Directory to scan recursively | . or C:\Repos\MyApp
 output-file | ✅ | Markdown file to write/update | README.md, ROADMAP.md
 optional-repo-url | ❌ | Base repo URL for clickable links | https://github.com/YourName/YourRepo
---lang [csharp|java] | ❌ | Choose which language to parse | --lang java
+--lang [csharp/java] | ❌ | Choose which language to parse | --lang java
 
 Behavior details:
 - Detects repository root automatically (.git, .sln, README.md, .github/, etc.)
