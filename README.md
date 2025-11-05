@@ -44,31 +44,33 @@ Originally created for **RPG Manager** by **Tombomeke Studios**, later expanded 
 
 ## 🛠 Installation
 
-### 🧩 Option 1 — via NuGet (recommended)
+### 🧩 Option 1 — via [NuGet](https://www.nuget.org/packages/ReadmeSync) (recommended)
+
 Install the tool globally on your system:
-
+```
 dotnet tool install -g ReadmeSync
-
+```
 Once installed, you can run it from anywhere:
-
+```
 readmesync . README.md
-
+```
 Or, to generate a roadmap with clickable GitHub links:
-
+```
 readmesync . ROADMAP.md https://github.com/YourName/YourRepo
-
+```
 Update the tool anytime with:
-
+```
 dotnet tool update -g ReadmeSync
-
+```
 ---
 
 ### 🧰 Option 2 — Build from source
 If you want to modify or debug ReadmeSync locally:
-
+```
 git clone https://github.com/tombomeke-ehb/ReadmeSync.git  
 cd ReadmeSync  
 dotnet run --project ReadmeSync -- . README.md
+```
 
 💡 Tip: You can use ReadmeSync as part of an automated workflow (e.g., GitHub Actions or commit hooks)
 to keep your documentation always in sync with your source code.
