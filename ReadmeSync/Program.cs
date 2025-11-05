@@ -6,143 +6,186 @@ using System.Text.RegularExpressions;
 // ============================================================================
 // 🧩 ReadmeSync.cs
 // ----------------------------------------------------------------------------
-// A command-line tool that scans a C# project and auto-generates or updates
-// a README or ROADMAP file based on namespaces, classes, public methods,
+// A command-line tool that scans your source code and auto-generates or updates
+// a README or ROADMAP file based on namespaces/packages, classes, public methods,
 // and // TODO comments.
 //
 // 🧠 Features
+// - Supports multiple languages (currently: C# and Java)
 // - Detects repository root automatically (.git, .sln, README.md, LICENSE)
 // - Keeps manual content above marker intact
-// - Creates structured markdown summary of codebase
+// - Creates structured markdown summaries of the codebase
 // - Supports optional GitHub URL linking
 //
 // ⚙️ Usage
-//   readmesync [scan-root] [output-file] [optional-repo-url]
+//   readmesync [--lang csharp|java] [scan-root] [output-file] [optional-repo-url]
 //
 // Example:
-//   readmesync . README.md https://github.com/tombomeke-ehb/ReadmeSync
+//   readmesync --lang java ./src README.md https://github.com/tombomeke-ehb/ReadmeSync
 //
 // 💡 Notes
-// - Safe to run multiple times; it only replaces below the marker
-// - Compatible with any .NET 8.0+ project
-// - Emojis and output format can be customized easily
+// - Safe to run multiple times; it only replaces content *below* the marker
+// - Compatible with .NET 8.0+
+// - Emojis, patterns, and markdown output are fully customizable
 //
-// © 2025 Tombomeke Studios - All rights reserved
+// 🏗️ Future improvements
+// - Add JSON config file (readmesync.json)
+// - Add folder exclusion rules
+// - Support for Python / TypeScript
+// - Richer syntax highlighting or tree views
+//
+// © 2025 Tombomeke Studios — All rights reserved
 // ============================================================================
-
 
 namespace ReadmeSync
 {
     internal class Program
     {
-        // ============================================================
-        // 🧠 Developer Notes
-        // ============================================================
-        // - You can safely modify emoji lists, section headings, and
-        //   markdown formatting above without breaking functionality.
-        // - To extend to other languages (e.g. TypeScript or Python),
-        //   adjust regex patterns for namespaces/classes/methods.
-        // - Future improvement ideas:
-        //   • Add config file (readmesync.json)
-        //   • Add support for excluding folders
-        //   • Add color-coded summary output
         static void Main(string[] args)
         {
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("🛠️ ReadmeSync – Automatically update README or ROADMAP with project code overview");
+            Console.WriteLine("🛠️ ReadmeSync – Automatically update README or ROADMAP with code overview");
             Console.ResetColor();
             Console.WriteLine("--------------------------------------------------------------------------\n");
 
-
-
             try
             {
-                // 1) Normalize working directory for IDE launches (helps VS)
-                string adjustedCwd = FindRepoRootNearest(AppContext.BaseDirectory, out var adjustedWhy) ?? AppContext.BaseDirectory;
-                Environment.CurrentDirectory = adjustedCwd;
-
-                // 2) Args
+                // ============================================================
+                // 1️⃣ Parse CLI Arguments
+                // ============================================================
                 if (args.Length == 0)
                 {
                     Console.WriteLine("Usage:");
-                    Console.WriteLine("  readmesync [scan-root] [output-file] [optional-repo-url]");
+                    Console.WriteLine("  readmesync [--lang csharp|java] [scan-root] [output-file] [optional-repo-url]");
                     Console.WriteLine("\nExamples:");
                     Console.WriteLine("  readmesync . README.md");
-                    Console.WriteLine("  readmesync ../MySolution ROADMAP.md");
-                    Console.WriteLine("  readmesync C:/Projects/MyGame README.md https://github.com/USERNAME/REPO\n");
+                    Console.WriteLine("  readmesync --lang java ./src ROADMAP.md https://github.com/USER/REPO\n");
                     return;
                 }
 
-                // 3) Scan root (where we look for .cs files)
-                string scanRoot = Path.GetFullPath(args[0]);
+                // Detect optional --lang flag
+                string language = "csharp";
+                int langIndex = Array.IndexOf(args, "--lang");
+                if (langIndex != -1 && langIndex + 1 < args.Length)
+                {
+                    language = args[langIndex + 1].ToLowerInvariant();
+                    args = args.Where((x, i) => i != langIndex && i != langIndex + 1).ToArray();
+                }
 
-                // 4) Repo root (NEAREST upwards match)
+                // ============================================================
+                // 2️⃣ Prepare Paths and Repo Info
+                // ============================================================
+                string scanRoot = Path.GetFullPath(args.Length > 0 ? args[0] : ".");
                 string repoRoot = FindRepoRootNearest(scanRoot, out var reason) ?? scanRoot;
 
-                // 5) Output file (relative to repo root unless absolute)
-                string outputFile =
-                    args.Length > 1
-                        ? (Path.IsPathRooted(args[1]) ? args[1] : Path.Combine(repoRoot, args[1]))
-                        : Path.Combine(repoRoot, "README.md");
+                string outputFile = args.Length > 1
+                    ? (Path.IsPathRooted(args[1]) ? args[1] : Path.Combine(repoRoot, args[1]))
+                    : Path.Combine(repoRoot, "README.md");
 
                 Directory.CreateDirectory(Path.GetDirectoryName(outputFile)!);
-
                 string repoUrl = args.Length > 2 ? args[2].TrimEnd('/') : "[YOUR_REPOSITORY_URL_HERE]";
 
-                // 6) Diagnostics
+                // ============================================================
+                // 3️⃣ Language Configuration (Regex Patterns)
+                // ============================================================
+                var patterns = LanguagePatterns.For(language);
+                string fileExt = patterns.Extension;
+
+                Console.WriteLine($"📦 Language: {language}");
                 Console.WriteLine($"📂 Scanning directory: {scanRoot}");
                 Console.WriteLine($"📁 Repo root:         {repoRoot}");
                 Console.WriteLine($"🔎 Detected by:       {reason ?? "(no marker; using scanRoot)"}");
                 Console.WriteLine($"📝 Output file:       {outputFile}\n");
 
-                if (!Directory.Exists(scanRoot))
-                {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"❌ Error: scan directory not found → {scanRoot}");
-                    Console.ResetColor();
-                    return;
-                }
-
-                // 7) Discover .cs files
-                var csFiles = Directory.GetFiles(scanRoot, "*.cs", SearchOption.AllDirectories);
-                if (csFiles.Length == 0)
+                // ============================================================
+                // 4️⃣ Scan Files
+                // ============================================================
+                var codeFiles = Directory.GetFiles(scanRoot, $"*{fileExt}", SearchOption.AllDirectories);
+                if (codeFiles.Length == 0)
                 {
                     Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine("⚠️ No .cs files found in project.");
+                    Console.WriteLine($"⚠️ No {fileExt} files found in project.");
                     Console.ResetColor();
                     return;
                 }
 
-                // 8) Analyze
-                var files = csFiles.Select(f =>
+                // ============================================================
+                // 5️⃣ Analyze Source Files
+                // ============================================================
+                var files = codeFiles.Select(f =>
                 {
                     string text = File.ReadAllText(f);
 
-                    // Match namespace declarations: e.g. "namespace MyApp.Core"
-                    string ns = Regex.Match(text, @"namespace\s+([A-Za-z0-9_.]+)", RegexOptions.Compiled).Groups[1].Value.Trim();
+                    // ------------------------------------------------------------
+                    // 🔍 Regex: Namespace / Package Extraction
+                    // ------------------------------------------------------------
+                    // Matches:
+                    //  - `namespace MyApp.Core`  (C#)
+                    //  - `package com.example.app;`  (Java)
+                    //
+                    // Explanation:
+                    //  - `namespace|package` → keyword to match
+                    //  - `\s+` → one or more spaces
+                    //  - `([A-Za-z0-9_.]+)` → capture valid namespace/package name
+                    //    containing letters, digits, underscores, and dots.
+                    string ns = Regex.Match(text, patterns.Namespace, RegexOptions.Compiled).Groups[1].Value.Trim();
 
-                    // Match class declarations, ignoring commented-out or inline "className" words
-                    string cls = Regex.Match(text, @"(?<!\/\/.*)(?<![A-Za-z0-9_])class\s+([A-Za-z0-9_]+)", RegexOptions.Compiled).Groups[1].Value.Trim();
+                    // ------------------------------------------------------------
+                    // 🔍 Regex: Class Extraction
+                    // ------------------------------------------------------------
+                    // Matches:
+                    //  - `class Player`  (C# / Java)
+                    //
+                    // Explanation:
+                    //  - `(?<!\/\/.*)` → negative lookbehind, avoids commented lines
+                    //  - `class\s+([A-Za-z0-9_]+)` → matches class keyword followed by
+                    //    a valid identifier (alphanumeric or underscore)
+                    string cls = Regex.Match(text, patterns.Class, RegexOptions.Compiled).Groups[1].Value.Trim();
 
                     if (string.IsNullOrWhiteSpace(ns) || string.IsNullOrWhiteSpace(cls))
                         return null;
 
-
-                    // Match all public methods: e.g. "public void DoThing()"
-                    var methods = Regex.Matches(text, @"public\s+[A-Za-z0-9_<>,\[\]\s]+\s+([A-Za-z0-9_]+)\s*\(", RegexOptions.Compiled)
+                    // ------------------------------------------------------------
+                    // 🔍 Regex: Public Method Extraction
+                    // ------------------------------------------------------------
+                    // Matches:
+                    //  - `public void Attack()`  (C# / Java)
+                    //  - `public int getHealth()`  (Java)
+                    //
+                    // Explanation:
+                    //  - `public` → ensures only public methods are captured
+                    //  - `[A-Za-z0-9_<>,\[\]\s]+` → matches return type (e.g. int, string[], List<T>)
+                    //  - `([A-Za-z0-9_]+)` → captures the method name
+                    //  - `\s*\(` → ensures it’s actually a function, not a variable
+                    //
+                    // NOTE: Constructors with the same name as the class are ignored below.
+                    var methods = Regex.Matches(text, patterns.Method, RegexOptions.Compiled)
                         .Cast<Match>()
                         .Select(m => m.Groups[1].Value)
                         .Where(m => m != cls)
                         .Distinct()
                         .ToList();
 
+                    // ------------------------------------------------------------
+                    // 🔍 Regex: TODO Comment Extraction
+                    // ------------------------------------------------------------
+                    // Matches:
+                    //  - `// TODO: refactor this`
+                    //  - `// todo fix null check`
+                    //
+                    // Explanation:
+                    //  - `//\s*TODO[: ](.*)` → finds "// TODO" with any spacing or case
+                    //  - `(.*)` → captures the remainder of the line
                     var todos = Regex.Matches(text, @"//\s*TODO[: ](.*)", RegexOptions.IgnoreCase | RegexOptions.Compiled)
                         .Cast<Match>()
                         .Select(m => m.Groups[1].Value.Trim())
                         .ToList();
 
-                    // Links: relative to repo root
-                    string rel = Path.GetRelativePath(repoRoot, f).Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                    // ------------------------------------------------------------
+                    // 🌐 Link construction
+                    // ------------------------------------------------------------
+                    // Converts full file paths into relative URLs for GitHub/GitLab/etc.
+                    string rel = Path.GetRelativePath(repoRoot, f).Replace(Path.DirectorySeparatorChar, '/');
                     string fileUrl = $"{repoUrl}/{rel}";
 
                     return new
@@ -161,17 +204,16 @@ namespace ReadmeSync
                 .ToList();
 
                 // ============================================================
-                // 📊 Project Statistics
+                // 6️⃣ Compute Summary Statistics
                 // ============================================================
-                // These aggregate counts are used to display the summary line
-                // at the top of the generated markdown file. The numbers reflect
-                // total namespaces, classes, public methods, and TODOs found.
                 int nsCount = files.Count;
                 int classCount = files.Sum(g => g.Count());
                 int methodCount = files.Sum(g => g.SelectMany(c => c.Methods).Count());
                 int todoCount = files.Sum(g => g.SelectMany(c => c.Todos).Count());
 
-                // 10) Preserve manual header
+                // ============================================================
+                // 7️⃣ Preserve Manual Section
+                // ============================================================
                 string manual = "";
                 if (File.Exists(outputFile))
                 {
@@ -182,40 +224,19 @@ namespace ReadmeSync
                 }
 
                 // ============================================================
-                //  🧮 Code Overview Writer
+                // 8️⃣ Write Auto-Generated Markdown
                 // ============================================================
-
-                // The following block writes the auto-generated README/ROADMAP section.
-                // It merges the manually written content above the marker with the
-                // structured code overview below.
                 using var sw = new StreamWriter(outputFile, false);
                 sw.WriteLine(manual);
                 sw.WriteLine("<!-- AUTO-GENERATED BELOW – DO NOT EDIT -->");
-                sw.WriteLine("\n# 🧮 Code Overview (auto-generated)\n");
+                sw.WriteLine($"\n# 🧮 Code Overview (auto-generated)\n");
+                sw.WriteLine($"_Language: **{language.ToUpper()}**_");
                 sw.WriteLine($"_Last updated: **{DateTime.Now:yyyy-MM-dd HH:mm}**_\n");
-                sw.WriteLine($"📊 **{nsCount} Namespaces · {classCount} Classes · {methodCount} Methods · {todoCount} TODOs**\n");
-
+                sw.WriteLine($"📊 **{nsCount} Packages · {classCount} Classes · {methodCount} Methods · {todoCount} TODOs**\n");
 
                 // ============================================================
-                //  🎨 Namespace Emojis (Customizable / Randomized)
+                // 🎨 Namespace Emojis
                 // ============================================================
-                //
-                // This array defines the emoji icons used for each namespace header
-                // in the generated markdown.
-                //
-                // 🧩 TIP: You can freely modify these emojis or replace them with
-                // any text/symbols you want (e.g. “🧠”, “💻”, “🎮”).
-                //
-                // By default, the generator cycles through them in order, but because
-                // the emoji index wraps using modulo arithmetic (`% emojis.Length`),
-                // the order will appear pseudo-random for longer project structures.
-                //
-                // If you’d like *true randomization*, replace the line:
-                //     string nsEmoji = emojis[eIndex++ % emojis.Length];
-                // with:
-                //     string nsEmoji = emojis[new Random().Next(emojis.Length)];
-                //
-
                 string[] emojis = { "🧱", "⚔️", "🧙", "🏹", "🐉", "🏰", "🧭", "🪄", "🧰", "🎯", "📦", "🧩" };
                 int eIndex = 0;
 
@@ -226,7 +247,7 @@ namespace ReadmeSync
 
                     foreach (var file in nsGroup)
                     {
-                        sw.WriteLine($"### [{file.Class}.cs]({file.Link})");
+                        sw.WriteLine($"### [{file.Class}{fileExt}]({file.Link})");
                         if (file.Methods.Any())
                         {
                             sw.WriteLine("**Public Methods:**");
@@ -252,12 +273,7 @@ namespace ReadmeSync
                 Console.ResetColor();
                 Console.WriteLine($"📁 Output file: {Path.GetFullPath(outputFile)}\n");
             }
-            // ============================================================
-            // ❗ Error Handling
-            // ============================================================
-            // We catch *all* exceptions here so that the CLI never crashes
-            // silently during automation (e.g. in CI/CD pipelines).
-            // Instead, errors are printed in red to the console.
+
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -268,62 +284,93 @@ namespace ReadmeSync
         }
 
         // ============================================================
-        // 🧭 Nearest Repo Root Finder (prefers closest marker upward)
+        // 🧭 Repo Root Finder
         // ============================================================
-
         /// <summary>
-        /// Recursively searches upward from the given directory to find the most
-        /// likely repository root (preferring .git, README, LICENSE, or .sln).
+        /// Recursively searches upward from the given path to locate the
+        /// most likely repository root (preferring .git, solution, or README).
         /// </summary>
-        /// <param name="startPath">Starting directory to begin search.</param>
-        /// <param name="reason">Outputs explanation of why this directory was chosen.</param>
-        /// <returns>
-        /// Absolute path to the nearest detected repo root, or null if none found.
-        /// </returns>
         private static string? FindRepoRootNearest(string startPath, out string? reason)
         {
             reason = null;
             var dir = new DirectoryInfo(Path.GetFullPath(startPath));
 
-            // 1) Prefer NEAREST .git (dir or file)
-            var cur = dir;
-            while (cur != null)
+            while (dir != null)
             {
-                if (Directory.Exists(Path.Combine(cur.FullName, ".git")) || File.Exists(Path.Combine(cur.FullName, ".git")))
+                if (Directory.Exists(Path.Combine(dir.FullName, ".git")))
                 {
-                    reason = $".git at {cur.FullName}";
-                    return cur.FullName;
+                    reason = $".git at {dir.FullName}";
+                    return dir.FullName;
                 }
-                cur = cur.Parent;
-            }
 
-            // 2) Prefer NEAREST common markers
-            string[] markerFiles = { "README.md", "LICENSE" };
-            cur = dir;
-            while (cur != null)
-            {
-                if (markerFiles.Any(m => File.Exists(Path.Combine(cur.FullName, m))) ||
-                    Directory.Exists(Path.Combine(cur.FullName, ".github")))
+                if (Directory.EnumerateFiles(dir.FullName, "*.sln").Any())
                 {
-                    reason = $"marker (README/LICENSE/.github) at {cur.FullName}";
-                    return cur.FullName;
+                    reason = $"solution (*.sln) at {dir.FullName}";
+                    return dir.FullName;
                 }
-                cur = cur.Parent;
-            }
 
-            // 3) Prefer NEAREST folder with a *.sln
-            cur = dir;
-            while (cur != null)
-            {
-                if (Directory.EnumerateFiles(cur.FullName, "*.sln").Any())
+                if (File.Exists(Path.Combine(dir.FullName, "README.md")) ||
+                    File.Exists(Path.Combine(dir.FullName, "LICENSE")) ||
+                    Directory.Exists(Path.Combine(dir.FullName, ".github")))
                 {
-                    reason = $"solution (*.sln) at {cur.FullName}";
-                    return cur.FullName;
+                    reason = $"marker file at {dir.FullName}";
+                    return dir.FullName;
                 }
-                cur = cur.Parent;
+
+                dir = dir.Parent;
             }
 
             return null;
+        }
+    }
+
+    // ============================================================
+    // 🧩 Language Patterns (Extensible)
+    // ============================================================
+    /// <summary>
+    /// Defines the regex profiles for different languages.
+    /// Each profile includes:
+    ///  - Namespace/Package pattern
+    ///  - Class pattern
+    ///  - Public method pattern
+    ///  - File extension
+    ///
+    /// To extend:
+    /// Add a new case (e.g. "python") and specify patterns accordingly.
+    /// </summary>
+    internal class LanguagePatterns
+    {
+        public string Namespace { get; }
+        public string Class { get; }
+        public string Method { get; }
+        public string Extension { get; }
+
+        private LanguagePatterns(string ns, string cls, string method, string ext)
+        {
+            Namespace = ns;
+            Class = cls;
+            Method = method;
+            Extension = ext;
+        }
+
+        public static LanguagePatterns For(string lang)
+        {
+            return lang switch
+            {
+                "java" => new LanguagePatterns(
+                    @"package\s+([A-Za-z0-9_.]+)",                  // Matches `package com.example.app`
+                    @"class\s+([A-Za-z0-9_]+)",                    // Matches `class Player`
+                    @"public\s+[A-Za-z0-9_<>,\[\]\s]+\s+([A-Za-z0-9_]+)\s*\(", // Matches `public void attack(`
+                    ".java"
+                ),
+
+                _ => new LanguagePatterns( // Default: C#
+                    @"namespace\s+([A-Za-z0-9_.]+)",               // Matches `namespace MyApp.Core`
+                    @"class\s+([A-Za-z0-9_]+)",                    // Matches `class Player`
+                    @"public\s+[A-Za-z0-9_<>,\[\]\s]+\s+([A-Za-z0-9_]+)\s*\(", // Matches `public int Attack(`
+                    ".cs"
+                )
+            };
         }
     }
 }
