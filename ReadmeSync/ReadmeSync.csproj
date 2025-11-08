@@ -5,25 +5,25 @@
 		<TargetFramework>net8.0</TargetFramework>
 		<RootNamespace>ReadmeSync</RootNamespace>
 
-		<!-- 👇 Enable CLI tool packaging -->
+		<!-- Enable CLI tool packaging -->
 		<PackAsTool>true</PackAsTool>
 		<ToolCommandName>readmesync</ToolCommandName>
 
-		<!-- 🧩 Package metadata -->
+		<!-- Package metadata -->
 		<PackageId>ReadmeSync</PackageId>
-		<Version>1.1.1</Version>
+		<Version>1.1.0</Version>
 		<Authors>Tombomeke Studios</Authors>
 		<Company>Tombomeke Studios</Company>
-		<Description>🧠 A lightweight C# CLI tool that auto-generates README or ROADMAP files based on your project’s structure.</Description>
+		<Description>A lightweight C# CLI tool that auto-generates README or ROADMAP files based on your project’s structure.</Description>
 		<PackageTags>readme roadmap csharp documentation cli generator tombomeke</PackageTags>
 
-		<!-- ⚖️ Licensing & URLs -->
+		<!-- Licensing & URLs -->
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<RepositoryUrl>https://github.com/tombomeke-ehb/ReadmeSync</RepositoryUrl>
 		<PackageProjectUrl>https://github.com/tombomeke-ehb/ReadmeSync</PackageProjectUrl>
 		<RepositoryType>git</RepositoryType>
 
-		<!-- 📦 Output -->
+		<!-- Output -->
 		<PackageOutputPath>./nupkg</PackageOutputPath>
 		<IncludeSymbols>false</IncludeSymbols>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>

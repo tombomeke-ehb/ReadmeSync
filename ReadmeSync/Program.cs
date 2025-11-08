@@ -4,31 +4,31 @@ using System.Linq;
 using System.Text.RegularExpressions;
 
 // ============================================================================
-// 🧩 ReadmeSync.cs
+// ReadmeSync.cs
 // ----------------------------------------------------------------------------
 // A command-line tool that scans your source code and auto-generates or updates
 // a README or ROADMAP file based on namespaces/packages, classes, public methods,
 // and // TODO comments.
 //
-// 🧠 Features
+// Features
 // - Supports multiple languages (currently: C# and Java)
 // - Detects repository root automatically (.git, .sln, README.md, LICENSE)
 // - Keeps manual content above marker intact
 // - Creates structured markdown summaries of the codebase
 // - Supports optional GitHub URL linking
 //
-// ⚙️ Usage
+// Usage
 //   readmesync [--lang csharp|java] [scan-root] [output-file] [optional-repo-url]
 //
 // Example:
 //   readmesync --lang java ./src README.md https://github.com/tombomeke-ehb/ReadmeSync
 //
-// 💡 Notes
+// Notes
 // - Safe to run multiple times; it only replaces content *below* the marker
 // - Compatible with .NET 8.0+
 // - Emojis, patterns, and markdown output are fully customizable
 //
-// 🏗️ Future improvements
+// Future improvements
 // - Add JSON config file (readmesync.json)
 // - Add folder exclusion rules
 // - Support for Python / TypeScript
@@ -51,7 +51,7 @@ namespace ReadmeSync
             try
             {
                 // ============================================================
-                // 1️⃣ Parse CLI Arguments
+                // 1️ Parse CLI Arguments
                 // ============================================================
                 if (args.Length == 0)
                 {
@@ -73,7 +73,7 @@ namespace ReadmeSync
                 }
 
                 // ============================================================
-                // 2️⃣ Prepare Paths and Repo Info
+                // 2️ Prepare Paths and Repo Info
                 // ============================================================
                 string scanRoot = Path.GetFullPath(args.Length > 0 ? args[0] : ".");
                 string repoRoot = FindRepoRootNearest(scanRoot, out var reason) ?? scanRoot;
@@ -86,7 +86,7 @@ namespace ReadmeSync
                 string repoUrl = args.Length > 2 ? args[2].TrimEnd('/') : "[YOUR_REPOSITORY_URL_HERE]";
 
                 // ============================================================
-                // 3️⃣ Language Configuration (Regex Patterns)
+                // 3️ Language Configuration (Regex Patterns)
                 // ============================================================
                 var patterns = LanguagePatterns.For(language);
                 string fileExt = patterns.Extension;
@@ -98,7 +98,7 @@ namespace ReadmeSync
                 Console.WriteLine($"📝 Output file:       {outputFile}\n");
 
                 // ============================================================
-                // 4️⃣ Scan Files
+                // 4️ Scan Files
                 // ============================================================
                 var codeFiles = Directory.GetFiles(scanRoot, $"*{fileExt}", SearchOption.AllDirectories);
                 if (codeFiles.Length == 0)
@@ -110,14 +110,14 @@ namespace ReadmeSync
                 }
 
                 // ============================================================
-                // 5️⃣ Analyze Source Files
+                // 5️ Analyze Source Files
                 // ============================================================
                 var files = codeFiles.Select(f =>
                 {
                     string text = File.ReadAllText(f);
 
                     // ------------------------------------------------------------
-                    // 🔍 Regex: Namespace / Package Extraction
+                    // Regex: Namespace / Package Extraction
                     // ------------------------------------------------------------
                     // Matches:
                     //  - `namespace MyApp.Core`  (C#)
@@ -131,7 +131,7 @@ namespace ReadmeSync
                     string ns = Regex.Match(text, patterns.Namespace, RegexOptions.Compiled).Groups[1].Value.Trim();
 
                     // ------------------------------------------------------------
-                    // 🔍 Regex: Class Extraction
+                    // Regex: Class Extraction
                     // ------------------------------------------------------------
                     // Matches:
                     //  - `class Player`  (C# / Java)
@@ -146,7 +146,7 @@ namespace ReadmeSync
                         return null;
 
                     // ------------------------------------------------------------
-                    // 🔍 Regex: Public Method Extraction
+                    // Regex: Public Method Extraction
                     // ------------------------------------------------------------
                     // Matches:
                     //  - `public void Attack()`  (C# / Java)
@@ -167,7 +167,7 @@ namespace ReadmeSync
                         .ToList();
 
                     // ------------------------------------------------------------
-                    // 🔍 Regex: TODO Comment Extraction
+                    // Regex: TODO Comment Extraction
                     // ------------------------------------------------------------
                     // Matches:
                     //  - `// TODO: refactor this`
@@ -182,7 +182,7 @@ namespace ReadmeSync
                         .ToList();
 
                     // ------------------------------------------------------------
-                    // 🌐 Link construction
+                    // Link construction
                     // ------------------------------------------------------------
                     // Converts full file paths into relative URLs for GitHub/GitLab/etc.
                     string rel = Path.GetRelativePath(repoRoot, f).Replace(Path.DirectorySeparatorChar, '/');
@@ -204,7 +204,7 @@ namespace ReadmeSync
                 .ToList();
 
                 // ============================================================
-                // 6️⃣ Compute Summary Statistics
+                // 6️ Compute Summary Statistics
                 // ============================================================
                 int nsCount = files.Count;
                 int classCount = files.Sum(g => g.Count());
@@ -212,7 +212,7 @@ namespace ReadmeSync
                 int todoCount = files.Sum(g => g.SelectMany(c => c.Todos).Count());
 
                 // ============================================================
-                // 7️⃣ Preserve Manual Section
+                // 7️ Preserve Manual Section
                 // ============================================================
                 string manual = "";
                 if (File.Exists(outputFile))
@@ -224,7 +224,7 @@ namespace ReadmeSync
                 }
 
                 // ============================================================
-                // 8️⃣ Write Auto-Generated Markdown
+                // 8️ Write Auto-Generated Markdown
                 // ============================================================
                 using var sw = new StreamWriter(outputFile, false);
                 sw.WriteLine(manual);
@@ -235,7 +235,7 @@ namespace ReadmeSync
                 sw.WriteLine($"📊 **{nsCount} Packages · {classCount} Classes · {methodCount} Methods · {todoCount} TODOs**\n");
 
                 // ============================================================
-                // 🎨 Namespace Emojis
+                // Namespace Emojis
                 // ============================================================
                 string[] emojis = { "🧱", "⚔️", "🧙", "🏹", "🐉", "🏰", "🧭", "🪄", "🧰", "🎯", "📦", "🧩" };
                 int eIndex = 0;
@@ -284,7 +284,7 @@ namespace ReadmeSync
         }
 
         // ============================================================
-        // 🧭 Repo Root Finder
+        // Repo Root Finder
         // ============================================================
         /// <summary>
         /// Recursively searches upward from the given path to locate the
@@ -325,7 +325,7 @@ namespace ReadmeSync
     }
 
     // ============================================================
-    // 🧩 Language Patterns (Extensible)
+    // Language Patterns (Extensible)
     // ============================================================
     /// <summary>
     /// Defines the regex profiles for different languages.
