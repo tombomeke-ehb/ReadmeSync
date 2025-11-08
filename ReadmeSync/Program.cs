@@ -63,7 +63,9 @@ namespace ReadmeSync
                     return;
                 }
 
+                // ------------------------------------------------------------
                 // Detect optional --lang flag
+                // ------------------------------------------------------------
                 string language = "csharp";
                 int langIndex = Array.IndexOf(args, "--lang");
                 if (langIndex != -1 && langIndex + 1 < args.Length)
@@ -75,7 +77,16 @@ namespace ReadmeSync
                 // ============================================================
                 // 2️ Prepare Paths and Repo Info
                 // ============================================================
-                string scanRoot = Path.GetFullPath(args.Length > 0 ? args[0] : ".");
+                // Safely handle different argument orders and directories
+                string scanRoot = ".";
+                if (args.Length > 0 && Directory.Exists(args[0]))
+                    scanRoot = args[0];
+                else if (args.Length == 0)
+                    scanRoot = ".";
+                else if (args.Length > 1 && Directory.Exists(args[1]))
+                    scanRoot = args[1];
+
+                scanRoot = Path.GetFullPath(scanRoot);
                 string repoRoot = FindRepoRootNearest(scanRoot, out var reason) ?? scanRoot;
 
                 string outputFile = args.Length > 1
@@ -83,7 +94,9 @@ namespace ReadmeSync
                     : Path.Combine(repoRoot, "README.md");
 
                 Directory.CreateDirectory(Path.GetDirectoryName(outputFile)!);
-                string repoUrl = args.Length > 2 ? args[2].TrimEnd('/') : "[YOUR_REPOSITORY_URL_HERE]";
+
+                // Do NOT default to [YOUR_REPOSITORY_URL_HERE]
+                string repoUrl = args.Length > 2 ? args[2].TrimEnd('/') : string.Empty;
 
                 // ============================================================
                 // 3️ Language Configuration (Regex Patterns)
@@ -154,9 +167,9 @@ namespace ReadmeSync
                     //
                     // Explanation:
                     //  - `public` → ensures only public methods are captured
-                    //  - `[A-Za-z0-9_<>,\[\]\s]+` → matches return type (e.g. int, string[], List<T>)
+                    //  - `[A-Za-z0-9_<>,\[\]\s]+` → matches return type
                     //  - `([A-Za-z0-9_]+)` → captures the method name
-                    //  - `\s*\(` → ensures it’s actually a function, not a variable
+                    //  - `\s*\(` → ensures it’s actually a function
                     //
                     // NOTE: Constructors with the same name as the class are ignored below.
                     var methods = Regex.Matches(text, patterns.Method, RegexOptions.Compiled)
@@ -185,8 +198,11 @@ namespace ReadmeSync
                     // Link construction
                     // ------------------------------------------------------------
                     // Converts full file paths into relative URLs for GitHub/GitLab/etc.
+                    // Only create clickable links if repoUrl is valid (http/https)
                     string rel = Path.GetRelativePath(repoRoot, f).Replace(Path.DirectorySeparatorChar, '/');
-                    string fileUrl = $"{repoUrl}/{rel}";
+                    string? fileUrl = repoUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                        ? $"{repoUrl}/{rel}"
+                        : null;
 
                     return new
                     {
@@ -247,7 +263,12 @@ namespace ReadmeSync
 
                     foreach (var file in nsGroup)
                     {
-                        sw.WriteLine($"### [{file.Class}{fileExt}]({file.Link})");
+                        // Only clickable if valid link, else inline code
+                        if (!string.IsNullOrEmpty(file.Link))
+                            sw.WriteLine($"### [{file.Class}{fileExt}]({file.Link})");
+                        else
+                            sw.WriteLine($"### `{file.Class}{fileExt}`");
+
                         if (file.Methods.Any())
                         {
                             sw.WriteLine("**Public Methods:**");
