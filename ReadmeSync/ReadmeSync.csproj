@@ -5,28 +5,36 @@
 		<TargetFramework>net8.0</TargetFramework>
 		<RootNamespace>ReadmeSync</RootNamespace>
 
-		<!-- Enable CLI tool packaging -->
+		<!-- CLI tool packaging -->
 		<PackAsTool>true</PackAsTool>
 		<ToolCommandName>readmesync</ToolCommandName>
 
 		<!-- Package metadata -->
 		<PackageId>ReadmeSync</PackageId>
-		<Version>1.1.1</Version>
+		<Version>1.1.2</Version>
 		<Authors>Tombomeke Studios</Authors>
 		<Company>Tombomeke Studios</Company>
 		<Description>A lightweight C# CLI tool that auto-generates README or ROADMAP files based on your project’s structure.</Description>
 		<PackageTags>readme roadmap csharp documentation cli generator tombomeke</PackageTags>
 
-		<!-- Licensing & URLs -->
+		<!-- License & URLs -->
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<RepositoryUrl>https://github.com/tombomeke-ehb/ReadmeSync</RepositoryUrl>
 		<PackageProjectUrl>https://github.com/tombomeke-ehb/ReadmeSync</PackageProjectUrl>
 		<RepositoryType>git</RepositoryType>
+
+		<!-- Point to README (parent directory) -->
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 
 		<!-- Output -->
 		<PackageOutputPath>./nupkg</PackageOutputPath>
 		<IncludeSymbols>false</IncludeSymbols>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- Include README from parent directory -->
+		<None Include="..\README.md" Pack="true" PackagePath="\"/>
+	</ItemGroup>
 
 </Project>
