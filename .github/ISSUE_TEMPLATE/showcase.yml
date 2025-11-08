@@ -1,0 +1,32 @@
+name: 🚀 Showcase your project
+description: Share how you're using ReadmeSync in your project
+title: "Showcase: [Project Name]"
+labels: ["showcase"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for using **ReadmeSync**! 🎉  
+        We'd love to see how you're putting it to use.
+  - type: input
+    id: project_name
+    attributes:
+      label: "Project name"
+      description: "What’s the name of your project or repo?"
+      placeholder: "e.g., RPG Manager CLI"
+  - type: input
+    id: project_link
+    attributes:
+      label: "Project link"
+      description: "Link to your repository, website, or demo"
+      placeholder: "https://github.com/yourname/yourproject"
+  - type: textarea
+    id: how_used
+    attributes:
+      label: "How are you using ReadmeSync?"
+      description: "Briefly explain how you integrated it and what you like about it"
+  - type: textarea
+    id: feedback
+    attributes:
+      label: "Any suggestions or feedback?"
+      description: "Optional; anything you'd like to see added?"
