@@ -47,6 +47,7 @@ namespace ReadmeSync
             Console.WriteLine("🛠️ ReadmeSync – Automatically update README or ROADMAP with code overview");
             Console.WriteLine("Made by tombomeke Studios");
             Console.ResetColor();
+            Console.WriteLine("Made by tombomeke studios");
             Console.WriteLine("--------------------------------------------------------------------------\n");
 
             try
@@ -252,6 +253,8 @@ namespace ReadmeSync
                 sw.WriteLine($"_Language: **{language.ToUpper()}**_");
                 sw.WriteLine($"_Last updated: **{DateTime.Now:yyyy-MM-dd HH:mm}**_\n");
                 sw.WriteLine($"📊 **{nsCount} Packages · {classCount} Classes · {methodCount} Methods · {todoCount} TODOs**\n");
+                sw.WriteLine("");
+                sw.WriteLine("Generated with ReadmeSync made by tombomeke");
 
                 // ============================================================
                 // Namespace Emojis
