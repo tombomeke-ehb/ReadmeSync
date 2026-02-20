@@ -338,7 +338,6 @@ namespace ReadmeSync
         {
             try
             {
-                // TODO: Vul hier jouw Supabase URL en Anon Key in!
                 string supabaseUrl = "https://botvdxbfaffjyaidiulb.supabase.co"; // Bijv: https://xyz.supabase.co
                 string supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJvdHZkeGJmYWZmanlhaWRpdWxiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1OTA5MDAsImV4cCI6MjA4NzE2NjkwMH0.ax0GpGn9SktnJVfDnLmSo2IV2n8AZnIrFb7-3ZCG1jw";
 
