@@ -11,7 +11,7 @@
 
 		<!-- Package metadata -->
 		<PackageId>ReadmeSync</PackageId>
-		<Version>1.2.0</Version>
+		<Version>1.2.1</Version>
 		<Authors>Tombomeke Studios</Authors>
 		<Company>Tombomeke Studios</Company>
 		<Description>A lightweight C# CLI tool that auto-generates README or ROADMAP files based on your project’s structure.</Description>

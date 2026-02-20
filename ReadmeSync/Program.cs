@@ -24,21 +24,22 @@ using System.Reflection;
 // - Keeps manual content above marker intact
 // - Creates structured markdown summaries of the codebase
 // - Supports optional GitHub URL linking
+// - Optional emoji icons in output (disabled by default)
 //
 // Usage
-//   readmesync [--lang csharp|java] [scan-root] [output-file] [optional-repo-url]
+//   readmesync [--lang csharp|java] [--use-emojis] [--exclude folders] [--no-tracking] [scan-root] [output-file] [optional-repo-url]
 //
 // Example:
 //   readmesync --lang java ./src README.md https://github.com/tombomeke-ehb/ReadmeSync
+//   readmesync --use-emojis . README.md
 //
 // Notes
 // - Safe to run multiple times; it only replaces content *below* the marker
 // - Compatible with .NET 8.0+
-// - Emojis, patterns, and markdown output are fully customizable
+// - Emojis are disabled by default for a more professional output
 //
 // Future improvements
 // - Add JSON config file (readmesync.json)
-// - Add folder exclusion rules
 // - Support for Python / TypeScript
 // - Richer syntax highlighting or tree views
 //
@@ -52,10 +53,9 @@ namespace ReadmeSync
         static void Main(string[] args)
         {
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("🛠️ ReadmeSync – Automatically update README or ROADMAP with code overview");
+            Console.WriteLine("ReadmeSync – Automatically update README or ROADMAP with code overview");
             Console.WriteLine("Made by tombomeke Studios");
             Console.ResetColor();
-            Console.WriteLine("Made by tombomeke studios");
             Console.WriteLine("--------------------------------------------------------------------------\n");
 
             try
@@ -66,10 +66,11 @@ namespace ReadmeSync
                 if (args.Length == 0)
                 {
                     Console.WriteLine("Usage:");
-                    Console.WriteLine("  readmesync [--lang csharp|java] [scan-root] [output-file] [optional-repo-url]");
+                    Console.WriteLine("  readmesync [--lang csharp|java] [--use-emojis] [scan-root] [output-file] [optional-repo-url]");
                     Console.WriteLine("\nExamples:");
                     Console.WriteLine("  readmesync . README.md");
-                    Console.WriteLine("  readmesync --lang java ./src ROADMAP.md https://github.com/USER/REPO\n");
+                    Console.WriteLine("  readmesync --lang java ./src ROADMAP.md https://github.com/USER/REPO");
+                    Console.WriteLine("  readmesync --use-emojis . README.md\n");
                     return;
                 }
 
@@ -100,6 +101,12 @@ namespace ReadmeSync
                 // ------------------------------------------------------------
                 bool noTracking = args.Contains("--no-tracking");
                 args = args.Where(x => x != "--no-tracking").ToArray();
+
+                // ------------------------------------------------------------
+                // Detect optional --use-emojis flag
+                // ------------------------------------------------------------
+                bool useEmojis = args.Contains("--use-emojis");
+                args = args.Where(x => x != "--use-emojis").ToArray();
 
                 // ============================================================
                 // 2️ Prepare Paths and Repo Info
@@ -138,11 +145,11 @@ namespace ReadmeSync
                     telemetryTask = SendTelemetryAsync(language);
                 }
 
-                Console.WriteLine($"📦 Language: {language}");
-                Console.WriteLine($"📂 Scanning directory: {scanRoot}");
-                Console.WriteLine($"📁 Repo root:         {repoRoot}");
-                Console.WriteLine($"🔎 Detected by:       {reason ?? "(no marker; using scanRoot)"}");
-                Console.WriteLine($"📝 Output file:       {outputFile}\n");
+                Console.WriteLine($"Language: {language}");
+                Console.WriteLine($"Scanning directory: {scanRoot}");
+                Console.WriteLine($"Repo root:         {repoRoot}");
+                Console.WriteLine($"Detected by:       {reason ?? "(no marker; using scanRoot)"}");
+                Console.WriteLine($"Output file:       {outputFile}\n");
 
                 // ============================================================
                 // 4️ Scan Files
@@ -156,7 +163,7 @@ namespace ReadmeSync
                 if (codeFiles.Length == 0)
                 {
                     Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine($"⚠️ No {fileExt} files found in project.");
+                    Console.WriteLine($"No {fileExt} files found in project.");
                     Console.ResetColor();
                     return;
                 }
@@ -215,12 +222,16 @@ namespace ReadmeSync
                 using var sw = new StreamWriter(outputFile, false);
                 sw.WriteLine(manual);
                 sw.WriteLine("<!-- AUTO-GENERATED BELOW – DO NOT EDIT -->");
-                sw.WriteLine($"\n# 🧮 Code Overview (auto-generated)\n");
+                
+                string titleEmoji = useEmojis ? "🧮 " : "";
+                sw.WriteLine($"\n# {titleEmoji}Code Overview (auto-generated)\n");
                 sw.WriteLine("This section is automatically generated by [ReadmeSync](https://github.com/tombomeke-ehb/ReadmeSync)\n");
                 sw.WriteLine("Made by tombomeke Studios. To update, run the ReadmeSync tool locally.\n");
                 sw.WriteLine($"_Language: **{language.ToUpper()}**_");
                 sw.WriteLine($"_Last updated: **{DateTime.Now:yyyy-MM-dd HH:mm}**_\n");
-                sw.WriteLine($"📊 **{nsCount} Packages · {classCount} Types · {methodCount} Methods · {todoCount} TODOs**\n");
+                
+                string statsEmoji = useEmojis ? "📊 " : "";
+                sw.WriteLine($"{statsEmoji}**{nsCount} Packages · {classCount} Types · {methodCount} Methods · {todoCount} TODOs**\n");
                 sw.WriteLine("");
                 sw.WriteLine("Generated with ReadmeSync made by tombomeke");
 
@@ -232,8 +243,8 @@ namespace ReadmeSync
 
                 foreach (var nsGroup in files)
                 {
-                    string nsEmoji = emojis[eIndex++ % emojis.Length];
-                    sw.WriteLine($"\n## {nsEmoji} {nsGroup.Key}\n");
+                    string nsPrefix = useEmojis ? $"{emojis[eIndex++ % emojis.Length]} " : "";
+                    sw.WriteLine($"\n## {nsPrefix}{nsGroup.Key}\n");
 
                     foreach (var file in nsGroup)
                     {
@@ -271,9 +282,9 @@ namespace ReadmeSync
                 }
 
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("\n✅ ReadmeSync completed successfully!");
+                Console.WriteLine("\nReadmeSync completed successfully!");
                 Console.ResetColor();
-                Console.WriteLine($"📁 Output file: {Path.GetFullPath(outputFile)}\n");
+                Console.WriteLine($"Output file: {Path.GetFullPath(outputFile)}\n");
 
                 // Wacht maximaal 1.5 seconde op de telemetrie (zodat de CLI niet hangt bij traag internet)
                 if (telemetryTask != null)
@@ -475,7 +486,7 @@ namespace ReadmeSync
                 "java" => new LanguagePatterns(
                     @"package\s+([A-Za-z0-9_.]+)",                  // Matches `package com.example.app`
                     @"(class|interface|enum|record)\s+([A-Za-z0-9_]+)\s*([^{]*)", // Matches `class Player extends Entity`
-                    @"public\s+[A-Za-z0-9_<>,\[\]\s]+\s+([A-Za-z0-9_]+)\s*\(", // Matches `public void attack(`
+                    @"public\s+[A-Za-z0-9_<>,\[\]\s]+\s+([A-ZaZ0-9_]+)\s*\(", // Matches `public void attack(`
                     ".java",
                     @"/\*\*(.*?)\*/"                                // Matches Javadoc
                 ),
@@ -483,7 +494,7 @@ namespace ReadmeSync
                 _ => new LanguagePatterns( // Default: C#
                     @"namespace\s+([A-Za-z0-9_.]+)",               // Matches `namespace MyApp.Core`
                     @"(class|interface|record|struct|enum)\s+([A-Za-z0-9_]+)\s*([^{]*)", // Matches `class Player : Entity`
-                    @"public\s+[A-Za-z0-9_<>,\[\]\s]+\s+([A-Za-z0-9_]+)\s*\(", // Matches `public int Attack(`
+                    @"public\s+[A-Za-z0-9_<>,\[\]\s]+\s+([A-ZaZ0-9_]+)\s*\(", // Matches `public int Attack(`
                     ".cs",
                     @"///\s*<summary>(.*?)</summary>"              // Matches XML doc summary
                 )
