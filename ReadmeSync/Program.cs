@@ -148,17 +148,39 @@ namespace ReadmeSync
                     // ------------------------------------------------------------
                     // Regex: Class Extraction
                     // ------------------------------------------------------------
-                    // Matches:
-                    //  - `class Player`  (C# / Java)
-                    //
-                    // Explanation:
-                    //  - `(?<!\/\/.*)` → negative lookbehind, avoids commented lines
-                    //  - `class\s+([A-Za-z0-9_]+)` → matches class keyword followed by
-                    //    a valid identifier (alphanumeric or underscore)
-                    string cls = Regex.Match(text, patterns.Class, RegexOptions.Compiled).Groups[1].Value.Trim();
+                    var classMatch = Regex.Match(text, patterns.Class, RegexOptions.Compiled);
+                    string typeKeyword = classMatch.Groups[1].Value.Trim();
+                    string cls = classMatch.Groups[2].Value.Trim();
+                    string inheritance = classMatch.Groups[3].Value.Trim();
 
                     if (string.IsNullOrWhiteSpace(ns) || string.IsNullOrWhiteSpace(cls))
                         return null;
+
+                    if (inheritance.StartsWith(":")) 
+                        inheritance = inheritance.Substring(1).Trim();
+                    
+                    int whereIdx = inheritance.IndexOf("where");
+                    if (whereIdx >= 0) 
+                        inheritance = inheritance.Substring(0, whereIdx).Trim();
+
+                    // ------------------------------------------------------------
+                    // Regex: Summary Extraction
+                    // ------------------------------------------------------------
+                    string summary = "";
+                    var summaryMatch = Regex.Match(text, patterns.Summary, RegexOptions.Compiled | RegexOptions.Singleline);
+                    if (summaryMatch.Success)
+                    {
+                        summary = summaryMatch.Groups[1].Value;
+                        if (language == "csharp")
+                        {
+                            summary = Regex.Replace(summary, @"///\s?", "").Trim();
+                        }
+                        else if (language == "java")
+                        {
+                            summary = Regex.Replace(summary, @"\*\s?", "").Trim();
+                        }
+                        summary = Regex.Replace(summary, @"\s+", " ").Trim();
+                    }
 
                     // ------------------------------------------------------------
                     // Regex: Public Method Extraction
@@ -209,7 +231,10 @@ namespace ReadmeSync
                     return new
                     {
                         Namespace = ns,
+                        TypeKeyword = typeKeyword,
                         Class = cls,
+                        Inheritance = inheritance,
+                        Summary = summary,
                         Methods = methods,
                         Todos = todos,
                         Path = rel,
@@ -252,7 +277,7 @@ namespace ReadmeSync
                 sw.WriteLine("Made by tombomeke Studios. To update, run the ReadmeSync tool locally.\n");
                 sw.WriteLine($"_Language: **{language.ToUpper()}**_");
                 sw.WriteLine($"_Last updated: **{DateTime.Now:yyyy-MM-dd HH:mm}**_\n");
-                sw.WriteLine($"📊 **{nsCount} Packages · {classCount} Classes · {methodCount} Methods · {todoCount} TODOs**\n");
+                sw.WriteLine($"📊 **{nsCount} Packages · {classCount} Types · {methodCount} Methods · {todoCount} TODOs**\n");
                 sw.WriteLine("");
                 sw.WriteLine("Generated with ReadmeSync made by tombomeke");
 
@@ -270,10 +295,17 @@ namespace ReadmeSync
                     foreach (var file in nsGroup)
                     {
                         // Only clickable if valid link, else inline code
+                        string typeLabel = string.IsNullOrEmpty(file.TypeKeyword) ? "class" : file.TypeKeyword;
                         if (!string.IsNullOrEmpty(file.Link))
-                            sw.WriteLine($"### [{file.Class}{fileExt}]({file.Link})");
+                            sw.WriteLine($"### [{file.Class}{fileExt}]({file.Link}) *({typeLabel})*");
                         else
-                            sw.WriteLine($"### `{file.Class}{fileExt}`");
+                            sw.WriteLine($"### `{file.Class}{fileExt}` *({typeLabel})*");
+
+                        if (!string.IsNullOrEmpty(file.Inheritance))
+                            sw.WriteLine($"**Inherits:** `{file.Inheritance}`\n");
+
+                        if (!string.IsNullOrEmpty(file.Summary))
+                            sw.WriteLine($"> {file.Summary}\n");
 
                         if (file.Methods.Any())
                         {
@@ -371,13 +403,15 @@ namespace ReadmeSync
         public string Class { get; }
         public string Method { get; }
         public string Extension { get; }
+        public string Summary { get; }
 
-        private LanguagePatterns(string ns, string cls, string method, string ext)
+        private LanguagePatterns(string ns, string cls, string method, string ext, string summary)
         {
             Namespace = ns;
             Class = cls;
             Method = method;
             Extension = ext;
+            Summary = summary;
         }
 
         public static LanguagePatterns For(string lang)
@@ -386,16 +420,18 @@ namespace ReadmeSync
             {
                 "java" => new LanguagePatterns(
                     @"package\s+([A-Za-z0-9_.]+)",                  // Matches `package com.example.app`
-                    @"class\s+([A-Za-z0-9_]+)",                    // Matches `class Player`
+                    @"(class|interface|enum|record)\s+([A-Za-z0-9_]+)\s*([^{]*)", // Matches `class Player extends Entity`
                     @"public\s+[A-Za-z0-9_<>,\[\]\s]+\s+([A-Za-z0-9_]+)\s*\(", // Matches `public void attack(`
-                    ".java"
+                    ".java",
+                    @"/\*\*(.*?)\*/"                                // Matches Javadoc
                 ),
 
                 _ => new LanguagePatterns( // Default: C#
                     @"namespace\s+([A-Za-z0-9_.]+)",               // Matches `namespace MyApp.Core`
-                    @"class\s+([A-Za-z0-9_]+)",                    // Matches `class Player`
+                    @"(class|interface|record|struct|enum)\s+([A-Za-z0-9_]+)\s*([^{]*)", // Matches `class Player : Entity`
                     @"public\s+[A-Za-z0-9_<>,\[\]\s]+\s+([A-Za-z0-9_]+)\s*\(", // Matches `public int Attack(`
-                    ".cs"
+                    ".cs",
+                    @"///\s*<summary>(.*?)</summary>"              // Matches XML doc summary
                 )
             };
         }
