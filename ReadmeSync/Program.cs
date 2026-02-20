@@ -2,6 +2,12 @@
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
+using System.Runtime.InteropServices;
+using System.Reflection;
 
 #nullable enable
 
@@ -89,6 +95,12 @@ namespace ReadmeSync
                     args = args.Where((x, i) => i != excludeIndex && i != excludeIndex + 1).ToArray();
                 }
 
+                // ------------------------------------------------------------
+                // Detect optional --no-tracking flag
+                // ------------------------------------------------------------
+                bool noTracking = args.Contains("--no-tracking");
+                args = args.Where(x => x != "--no-tracking").ToArray();
+
                 // ============================================================
                 // 2️ Prepare Paths and Repo Info
                 // ============================================================
@@ -119,6 +131,12 @@ namespace ReadmeSync
                 // ============================================================
                 var patterns = LanguagePatterns.For(language);
                 string fileExt = patterns.Extension;
+
+                Task? telemetryTask = null;
+                if (!noTracking)
+                {
+                    telemetryTask = SendTelemetryAsync(language);
+                }
 
                 Console.WriteLine($"📦 Language: {language}");
                 Console.WriteLine($"📂 Scanning directory: {scanRoot}");
@@ -256,6 +274,12 @@ namespace ReadmeSync
                 Console.WriteLine("\n✅ ReadmeSync completed successfully!");
                 Console.ResetColor();
                 Console.WriteLine($"📁 Output file: {Path.GetFullPath(outputFile)}\n");
+
+                // Wacht maximaal 1.5 seconde op de telemetrie (zodat de CLI niet hangt bij traag internet)
+                if (telemetryTask != null)
+                {
+                    Task.WaitAny(telemetryTask, Task.Delay(1500));
+                }
             }
 
             catch (Exception ex)
@@ -305,6 +329,40 @@ namespace ReadmeSync
             }
 
             return null;
+        }
+
+        // ============================================================
+        // Telemetry (Supabase)
+        // ============================================================
+        private static async Task SendTelemetryAsync(string language)
+        {
+            try
+            {
+                // TODO: Vul hier jouw Supabase URL en Anon Key in!
+                string supabaseUrl = "https://botvdxbfaffjyaidiulb.supabase.co"; // Bijv: https://xyz.supabase.co
+                string supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJvdHZkeGJmYWZmanlhaWRpdWxiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1OTA5MDAsImV4cCI6MjA4NzE2NjkwMH0.ax0GpGn9SktnJVfDnLmSo2IV2n8AZnIrFb7-3ZCG1jw";
+
+                if (supabaseUrl.Contains("VUL_HIER")) return;
+
+                using var client = new HttpClient();
+                client.DefaultRequestHeaders.Add("apikey", supabaseKey);
+                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {supabaseKey}");
+
+                var payload = new
+                {
+                    tool_version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown",
+                    language_scanned = language,
+                    os_platform = RuntimeInformation.OSDescription
+                };
+
+                var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                
+                await client.PostAsync($"{supabaseUrl}/rest/v1/telemetry_logs", content);
+            }
+            catch
+            {
+                // Fouten negeren we, de tool moet altijd blijven werken voor de gebruiker
+            }
         }
 
         // ============================================================
