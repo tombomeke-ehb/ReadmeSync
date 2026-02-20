@@ -3,6 +3,8 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 
+#nullable enable
+
 // ============================================================================
 // ReadmeSync.cs
 // ----------------------------------------------------------------------------
@@ -39,7 +41,7 @@ using System.Text.RegularExpressions;
 
 namespace ReadmeSync
 {
-    internal class Program
+    public class Program
     {
         static void Main(string[] args)
         {
@@ -76,11 +78,23 @@ namespace ReadmeSync
                     args = args.Where((x, i) => i != langIndex && i != langIndex + 1).ToArray();
                 }
 
+                // ------------------------------------------------------------
+                // Detect optional --exclude flag
+                // ------------------------------------------------------------
+                string[] excludes = { "bin", "obj", "node_modules", ".git", ".vs" };
+                int excludeIndex = Array.IndexOf(args, "--exclude");
+                if (excludeIndex != -1 && excludeIndex + 1 < args.Length)
+                {
+                    excludes = args[excludeIndex + 1].Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+                    args = args.Where((x, i) => i != excludeIndex && i != excludeIndex + 1).ToArray();
+                }
+
                 // ============================================================
                 // 2️ Prepare Paths and Repo Info
                 // ============================================================
                 // Safely handle different argument orders and directories
                 string scanRoot = ".";
+
                 if (args.Length > 0 && Directory.Exists(args[0]))
                     scanRoot = args[0];
                 else if (args.Length == 0)
@@ -115,7 +129,12 @@ namespace ReadmeSync
                 // ============================================================
                 // 4️ Scan Files
                 // ============================================================
-                var codeFiles = Directory.GetFiles(scanRoot, $"*{fileExt}", SearchOption.AllDirectories);
+                var codeFiles = Directory.GetFiles(scanRoot, $"*{fileExt}", SearchOption.AllDirectories)
+                    .Where(f => !excludes.Any(ex => 
+                        f.Contains($"{Path.DirectorySeparatorChar}{ex}{Path.DirectorySeparatorChar}") || 
+                        f.EndsWith($"{Path.DirectorySeparatorChar}{ex}")))
+                    .ToArray();
+
                 if (codeFiles.Length == 0)
                 {
                     Console.ForegroundColor = ConsoleColor.Yellow;
@@ -130,93 +149,8 @@ namespace ReadmeSync
                 var files = codeFiles.Select(f =>
                 {
                     string text = File.ReadAllText(f);
-
-                    // ------------------------------------------------------------
-                    // Regex: Namespace / Package Extraction
-                    // ------------------------------------------------------------
-                    // Matches:
-                    //  - `namespace MyApp.Core`  (C#)
-                    //  - `package com.example.app;`  (Java)
-                    //
-                    // Explanation:
-                    //  - `namespace|package` → keyword to match
-                    //  - `\s+` → one or more spaces
-                    //  - `([A-Za-z0-9_.]+)` → capture valid namespace/package name
-                    //    containing letters, digits, underscores, and dots.
-                    string ns = Regex.Match(text, patterns.Namespace, RegexOptions.Compiled).Groups[1].Value.Trim();
-
-                    // ------------------------------------------------------------
-                    // Regex: Class Extraction
-                    // ------------------------------------------------------------
-                    var classMatch = Regex.Match(text, patterns.Class, RegexOptions.Compiled);
-                    string typeKeyword = classMatch.Groups[1].Value.Trim();
-                    string cls = classMatch.Groups[2].Value.Trim();
-                    string inheritance = classMatch.Groups[3].Value.Trim();
-
-                    if (string.IsNullOrWhiteSpace(ns) || string.IsNullOrWhiteSpace(cls))
-                        return null;
-
-                    if (inheritance.StartsWith(":")) 
-                        inheritance = inheritance.Substring(1).Trim();
-                    
-                    int whereIdx = inheritance.IndexOf("where");
-                    if (whereIdx >= 0) 
-                        inheritance = inheritance.Substring(0, whereIdx).Trim();
-
-                    // ------------------------------------------------------------
-                    // Regex: Summary Extraction
-                    // ------------------------------------------------------------
-                    string summary = "";
-                    var summaryMatch = Regex.Match(text, patterns.Summary, RegexOptions.Compiled | RegexOptions.Singleline);
-                    if (summaryMatch.Success)
-                    {
-                        summary = summaryMatch.Groups[1].Value;
-                        if (language == "csharp")
-                        {
-                            summary = Regex.Replace(summary, @"///\s?", "").Trim();
-                        }
-                        else if (language == "java")
-                        {
-                            summary = Regex.Replace(summary, @"\*\s?", "").Trim();
-                        }
-                        summary = Regex.Replace(summary, @"\s+", " ").Trim();
-                    }
-
-                    // ------------------------------------------------------------
-                    // Regex: Public Method Extraction
-                    // ------------------------------------------------------------
-                    // Matches:
-                    //  - `public void Attack()`  (C# / Java)
-                    //  - `public int getHealth()`  (Java)
-                    //
-                    // Explanation:
-                    //  - `public` → ensures only public methods are captured
-                    //  - `[A-Za-z0-9_<>,\[\]\s]+` → matches return type
-                    //  - `([A-Za-z0-9_]+)` → captures the method name
-                    //  - `\s*\(` → ensures it’s actually a function
-                    //
-                    // NOTE: Constructors with the same name as the class are ignored below.
-                    var methods = Regex.Matches(text, patterns.Method, RegexOptions.Compiled)
-                        .Cast<Match>()
-                        .Select(m => m.Groups[1].Value)
-                        .Where(m => m != cls)
-                        .Distinct()
-                        .ToList();
-
-                    // ------------------------------------------------------------
-                    // Regex: TODO Comment Extraction
-                    // ------------------------------------------------------------
-                    // Matches:
-                    //  - `// TODO: refactor this`
-                    //  - `// todo fix null check`
-                    //
-                    // Explanation:
-                    //  - `//\s*TODO[: ](.*)` → finds "// TODO" with any spacing or case
-                    //  - `(.*)` → captures the remainder of the line
-                    var todos = Regex.Matches(text, @"//\s*TODO[: ](.*)", RegexOptions.IgnoreCase | RegexOptions.Compiled)
-                        .Cast<Match>()
-                        .Select(m => m.Groups[1].Value.Trim())
-                        .ToList();
+                    var info = AnalyzeCode(text, patterns, language);
+                    if (info == null) return null;
 
                     // ------------------------------------------------------------
                     // Link construction
@@ -228,18 +162,9 @@ namespace ReadmeSync
                         ? $"{repoUrl}/{rel}"
                         : null;
 
-                    return new
-                    {
-                        Namespace = ns,
-                        TypeKeyword = typeKeyword,
-                        Class = cls,
-                        Inheritance = inheritance,
-                        Summary = summary,
-                        Methods = methods,
-                        Todos = todos,
-                        Path = rel,
-                        Link = fileUrl
-                    };
+                    info.Path = rel;
+                    info.Link = fileUrl;
+                    return info;
                 })
                 .Where(f => f != null)
                 .GroupBy(f => f.Namespace)
@@ -381,6 +306,78 @@ namespace ReadmeSync
 
             return null;
         }
+
+        // ============================================================
+        // Code Analyzer (Extracted for testability)
+        // ============================================================
+        public static CodeFileInfo? AnalyzeCode(string text, LanguagePatterns patterns, string language)
+        {
+            string ns = Regex.Match(text, patterns.Namespace, RegexOptions.Compiled).Groups[1].Value.Trim();
+
+            var classMatch = Regex.Match(text, patterns.Class, RegexOptions.Compiled);
+            string typeKeyword = classMatch.Groups[1].Value.Trim();
+            string cls = classMatch.Groups[2].Value.Trim();
+            string inheritance = classMatch.Groups[3].Value.Trim();
+
+            if (string.IsNullOrWhiteSpace(ns) || string.IsNullOrWhiteSpace(cls))
+                return null;
+
+            if (inheritance.StartsWith(":")) 
+                inheritance = inheritance.Substring(1).Trim();
+            
+            int whereIdx = inheritance.IndexOf("where");
+            if (whereIdx >= 0) 
+                inheritance = inheritance.Substring(0, whereIdx).Trim();
+
+            string summary = "";
+            var summaryMatch = Regex.Match(text, patterns.Summary, RegexOptions.Compiled | RegexOptions.Singleline);
+            if (summaryMatch.Success)
+            {
+                summary = summaryMatch.Groups[1].Value;
+                if (language == "csharp")
+                    summary = Regex.Replace(summary, @"///\s?", "").Trim();
+                else if (language == "java")
+                    summary = Regex.Replace(summary, @"\*\s?", "").Trim();
+                
+                summary = Regex.Replace(summary, @"\s+", " ").Trim();
+            }
+
+            var methods = Regex.Matches(text, patterns.Method, RegexOptions.Compiled)
+                .Cast<Match>()
+                .Select(m => m.Groups[1].Value)
+                .Where(m => m != cls)
+                .Distinct()
+                .ToList();
+
+            var todos = Regex.Matches(text, @"//\s*TODO[: ](.*)", RegexOptions.IgnoreCase | RegexOptions.Compiled)
+                .Cast<Match>()
+                .Select(m => m.Groups[1].Value.Trim())
+                .ToList();
+
+            return new CodeFileInfo
+            {
+                Namespace = ns,
+                TypeKeyword = typeKeyword,
+                Class = cls,
+                Inheritance = inheritance,
+                Summary = summary,
+                Methods = methods,
+                Todos = todos
+            };
+        }
+    }
+
+    public class CodeFileInfo
+    {
+        public string Namespace { get; set; } = "";
+        public string TypeKeyword { get; set; } = "";
+        public string Class { get; set; } = "";
+        public string Inheritance { get; set; } = "";
+        public string Summary { get; set; } = "";
+        public System.Collections.Generic.List<string> Methods { get; set; } = new();
+        public System.Collections.Generic.List<string> Todos { get; set; } = new();
+        public string Path { get; set; } = "";
+        public string? Link { get; set; }
     }
 
     // ============================================================
@@ -397,7 +394,7 @@ namespace ReadmeSync
     /// To extend:
     /// Add a new case (e.g. "python") and specify patterns accordingly.
     /// </summary>
-    internal class LanguagePatterns
+    public class LanguagePatterns
     {
         public string Namespace { get; }
         public string Class { get; }
