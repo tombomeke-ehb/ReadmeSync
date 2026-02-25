@@ -485,7 +485,7 @@ namespace ReadmeSync
                 "java" => new LanguagePatterns(
                     @"package\s+([A-Za-z0-9_.]+)",                  // Matches `package com.example.app`
                     @"(class|interface|enum|record)\s+([A-Za-z0-9_]+)\s*([^{]*)", // Matches `class Player extends Entity`
-                    @"public\s+[A-Za-z0-9_<>,\[\]\s]+\s+([A-ZaZ0-9_]+)\s*\(", // Matches `public void attack(`
+                    @"public\s+[A-Za-z0-9_<>,\[\]\s]+\s+([A-Za-z0-9_]+)\s*\(", // Matches `public void attack(`
                     ".java",
                     @"/\*\*(.*?)\*/"                                // Matches Javadoc
                 ),
@@ -493,7 +493,7 @@ namespace ReadmeSync
                 _ => new LanguagePatterns( // Default: C#
                     @"namespace\s+([A-Za-z0-9_.]+)",               // Matches `namespace MyApp.Core`
                     @"(class|interface|record|struct|enum)\s+([A-Za-z0-9_]+)\s*([^{]*)", // Matches `class Player : Entity`
-                    @"public\s+[A-Za-z0-9_<>,\[\]\s]+\s+([A-ZaZ0-9_]+)\s*\(", // Matches `public int Attack(`
+                    @"public\s+[A-Za-z0-9_<>,\[\]\s]+\s+([A-Za-z0-9_]+)\s*\(", // Matches `public int Attack(`
                     ".cs",
                     @"///\s*<summary>(.*?)</summary>"              // Matches XML doc summary
                 )

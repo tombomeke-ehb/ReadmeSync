@@ -77,6 +77,35 @@ public class Player extends Entity implements IPlayable {
         }
 
         [Fact]
+        public void AnalyzeCode_Java_Interface_ExtractsCorrectly()
+        {
+            // Arrange
+            string code = @"
+package com.example.core;
+
+/**
+ * Defines playable actions.
+ */
+public interface IPlayable {
+    public void attack();
+    public void defend();
+}";
+            var patterns = LanguagePatterns.For("java");
+
+            // Act
+            var result = Program.AnalyzeCode(code, patterns, "java");
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal("com.example.core", result.Namespace);
+            Assert.Equal("interface", result.TypeKeyword);
+            Assert.Equal("IPlayable", result.Class);
+            Assert.Equal("Defines playable actions.", result.Summary);
+            Assert.Contains("attack", result.Methods);
+            Assert.Contains("defend", result.Methods);
+        }
+
+        [Fact]
         public void AnalyzeCode_CSharp_Record_ExtractsCorrectly()
         {
             // Arrange
