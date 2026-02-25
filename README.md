@@ -1,27 +1,31 @@
 # ReadmeSync
 
-**ReadmeSync** is a lightweight, fast, and highly customizable command-line tool that automatically scans your source code and generates or updates a `README.md` or `ROADMAP.md` file. It extracts namespaces, classes, interfaces, public methods, XML/Javadoc summaries, and `// TODO` comments to give you an instant, structured overview of your project.
+**ReadmeSync** is a lightweight, fast, and highly customizable command-line tool that automatically scans your source code and generates or updates a `README.md` or `ROADMAP.md` file. It extracts namespaces, classes, interfaces, public methods, XML/Javadoc/docstring summaries, and `// TODO` comments to give you an instant, structured overview of your project.
 
 [![NuGet version](https://badge.fury.io/nu/ReadmeSync.svg)](https://badge.fury.io/nu/ReadmeSync)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Downloads](https://img.shields.io/nuget/dt/ReadmeSync.svg)](https://www.nuget.org/packages/ReadmeSync/)
-[![Build Status](https://github.com/tombomeke-ehb/ReadmeSync/actions/workflows/publish.yml/badge.svg)](https://github.com/tombomeke-ehb/ReadmeSync/actions)
+[![Build Status](https://github.com/tombomeke-ehb/ReadmeSync/actions/workflows/ci.yml/badge.svg)](https://github.com/tombomeke-ehb/ReadmeSync/actions)
 
 ---
 
-## Features
+## ✨ Features
 
-- **Multi-Language Support**: Currently supports **C#** and **Java**.
+- **Multi-Language Support**: **C#**, **Java**, **Python**, **TypeScript**, and **JavaScript** 🚀
 - **Deep Code Insights**: Extracts `class`, `interface`, `record`, `struct`, and `enum` types.
-- **Documentation Extraction**: Automatically pulls `/// <summary>` (C#) and `/** ... */` (Java) comments into your markdown.
+- **Documentation Extraction**: Automatically pulls documentation comments:
+  - C#: `/// <summary>`
+  - Java/TypeScript/JavaScript: `/** ... */` (JSDoc/Javadoc)
+  - Python: `"""docstrings"""`
 - **Inheritance Tracking**: Shows which classes or interfaces your code inherits from.
-- **Smart Exclusions**: Automatically ignores `bin`, `obj`, `node_modules`, `.git`, and `.vs`. Customizable via the `--exclude` flag.
+- **Smart Exclusions**: Automatically ignores `bin`, `obj`, `node_modules`, `.git`, `.vs`, `__pycache__`, `dist`, and `build`. Customizable via the `--exclude` flag.
 - **Safe Updates**: Keeps your manual content intact. It only replaces content *below* the auto-generated marker.
 - **GitHub Integration**: Optionally generates clickable links to your source files in your repository.
+- **CI/CD Ready**: Automated testing on multiple platforms ensures reliability.
 
 ---
 
-## Installation
+## 📦 Installation
 
 ReadmeSync is distributed as a .NET Global Tool. You can install it easily via the command line:
 
@@ -36,12 +40,12 @@ dotnet tool update --global ReadmeSync
 
 ---
 
-## Usage
+## 🚀 Usage
 
 Navigate to your project directory and run the tool:
 
 ```bash
-readmesync [scan-root] [output-file] [optional-repo-url]
+readmesync [--lang language] [scan-root] [output-file] [optional-repo-url]
 ```
 
 ### Examples
@@ -56,102 +60,51 @@ readmesync . README.md
 readmesync --lang java ./src ROADMAP.md
 ```
 
-**3. Generate Clickable GitHub Links**
+**3. Scan a Python Project**
 ```bash
-readmesync . README.md https://github.com/tombomeke-ehb/ReadmeSync
+readmesync --lang python ./app README.md https://github.com/user/repo
 ```
 
-**4. Custom Folder Exclusions**
+**4. Scan a TypeScript Project**
 ```bash
-readmesync --exclude tests,docs,temp . README.md
+readmesync --lang typescript ./src DOCS.md
 ```
 
-**5. Disable Anonymous Telemetry**
+**5. Generate Clickable GitHub Links**
 ```bash
-readmesync --no-tracking . README.md
+readmesync . README.md https://github.com/YOUR_USERNAME/YOUR_REPO
 ```
 
-**6. Enable Emojis in Generated Output**
+**6. Use Emojis for Visual Appeal**
 ```bash
 readmesync --use-emojis . README.md
 ```
 
----
-
-## Configuration Options
-
-ReadmeSync supports several command-line flags to customize its behavior:
-
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--lang <language>` | Specify the source language (`csharp` or `java`) | `csharp` |
-| `--exclude <folders>` | Comma-separated list of folders to exclude | `bin,obj,node_modules,.git,.vs` |
-| `--no-tracking` | Disable anonymous telemetry | Tracking enabled |
-| `--use-emojis` | Enable emoji icons in generated markdown output | Disabled |
-
-### Example with Multiple Options
-
+**7. Custom Exclusions**
 ```bash
-readmesync --lang csharp --exclude tests,temp --no-tracking . README.md https://github.com/user/repo
+readmesync --exclude "test,temp,cache" . README.md
 ```
 
 ---
 
-## What does the output look like?
+## 🌐 Supported Languages
 
-ReadmeSync generates a clean, structured markdown overview. Here is an example of what it produces:
+| Language | Extension | Status |
+|----------|-----------|--------|
+| C# | `.cs` | ✅ Full Support |
+| Java | `.java` | ✅ Full Support |
+| Python | `.py` | ✅ Full Support (v1.3.0+) |
+| TypeScript | `.ts` | ✅ Full Support (v1.3.0+) |
+| JavaScript | `.js` | ✅ Full Support (v1.3.0+) |
 
+---
 
-<!-- AUTO-GENERATED BELOW – DO NOT EDIT -->
+## 🔧 Command-Line Options
 
-# Code Overview (auto-generated)
-
-This section is automatically generated by [ReadmeSync](https://github.com/tombomeke-ehb/ReadmeSync)
-
-Made by tombomeke Studios. To update, run the ReadmeSync tool locally.
-
-_Language: **CSHARP**_
-_Last updated: **2026-02-20 14:25**_
-
-**2 Packages · 3 Types · 12 Methods · 3 TODOs**
-
-
-Generated with ReadmeSync made by tombomeke
-
-## ReadmeSync
-
-### `Program.cs` *(class)*
-> Recursively searches upward from the given path to locate the most likely repository root (preferring .git, solution, or README).
-
-**Public Methods:**
-- `For()`
-- `attack()`
-- `Attack()`
-
-**TODOs:**
-- [ ] comments.
-
-
-## ReadmeSync.Tests
-
-### `AnalyzerTests.cs` *(class)*
-> Represents a player in the game.
-
-**Public Methods:**
-- `AnalyzeCode_CSharp_ExtractsCorrectly()`
-- `Attack()`
-- `GetHealth()`
-- `AnalyzeCode_Java_ExtractsCorrectly()`
-- `attack()`
-- `getHealth()`
-- `AnalyzeCode_CSharp_Record_ExtractsCorrectly()`
-- `UserDto()`
-
-**TODOs:**
-- [ ] Implement movement
-- [ ] Implement movement
-
-### `UnitTest1.cs` *(class)*
-**Public Methods:**
-- `Test1()`
+| Flag | Description |
+|------|-------------|
+| `--lang <language>` | Specify language: `csharp`, `java`, `python`, `typescript`, `javascript` (default: `csharp`) |
+| `--use-emojis` | Enable emoji icons in the generated output |
+| `--exclude <folders>` | Comma-separated list of folders to exclude |
+| `--no-tracking` | Disable anonymous telemetry |
 

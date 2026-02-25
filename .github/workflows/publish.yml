@@ -8,9 +8,34 @@ on:
     types: [published]
 
 jobs:
-  publish:
+  # First job: Run tests before publishing
+  test:
+    name: Run Tests
     runs-on: ubuntu-latest
-    # Nodig om naar GitHub Packages te mogen schrijven
+    
+    steps:
+      - name: 🧩 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🧰 Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: 📦 Restore dependencies
+        run: dotnet restore
+
+      - name: 🔨 Build solution
+        run: dotnet build --configuration Release --no-restore
+
+      - name: 🧪 Run tests
+        run: dotnet test --configuration Release --no-build --verbosity normal
+
+  # Second job: Publish only if tests pass
+  publish:
+    name: Publish to NuGet
+    runs-on: ubuntu-latest
+    needs: test  # This job only runs if 'test' job succeeds
     permissions:
       packages: write
       contents: read

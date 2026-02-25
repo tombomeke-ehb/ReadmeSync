@@ -1,1 +1,4 @@
-<Solution />
+<Solution>
+  <Project Path="ReadmeSync.Tests/ReadmeSync.Tests.csproj" />
+  <Project Path="ReadmeSync/ReadmeSync.csproj" />
+</Solution>

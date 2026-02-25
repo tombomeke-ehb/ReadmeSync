@@ -1,13 +1,9 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
-using System.Net.Http;
-using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
-using System.Runtime.InteropServices;
-using System.Reflection;
+using ReadmeSync.Models;
+using ReadmeSync.Services;
 
 #nullable enable
 
@@ -19,7 +15,7 @@ using System.Reflection;
 // and // TODO comments.
 //
 // Features
-// - Supports multiple languages (currently: C# and Java)
+// - Supports multiple languages: C#, Java, Python, TypeScript, JavaScript
 // - Detects repository root automatically (.git, .sln, README.md, LICENSE)
 // - Keeps manual content above marker intact
 // - Creates structured markdown summaries of the codebase
@@ -27,21 +23,17 @@ using System.Reflection;
 // - Optional emoji icons in output (disabled by default)
 //
 // Usage
-//   readmesync [--lang csharp|java] [--use-emojis] [--exclude folders] [--no-tracking] [scan-root] [output-file] [optional-repo-url]
+//   readmesync [--lang csharp|java|python|typescript|javascript] [--use-emojis] [--exclude folders] [--no-tracking] [scan-root] [output-file] [optional-repo-url]
 //
 // Example:
 //   readmesync --lang java ./src README.md https://github.com/tombomeke-ehb/ReadmeSync
+//   readmesync --lang python . README.md
 //   readmesync --use-emojis . README.md
 //
 // Notes
 // - Safe to run multiple times; it only replaces content *below* the marker
 // - Compatible with .NET 8.0+
 // - Emojis are disabled by default for a more professional output
-//
-// Future improvements
-// - Add JSON config file (readmesync.json)
-// - Support for Python / TypeScript
-// - Richer syntax highlighting or tree views
 //
 // © 2025 Tombomeke Studios — All rights reserved
 // ============================================================================
@@ -65,98 +57,55 @@ namespace ReadmeSync
                 // ============================================================
                 if (args.Length == 0)
                 {
-                    Console.WriteLine("Usage:");
-                    Console.WriteLine("  readmesync [--lang csharp|java] [--use-emojis] [scan-root] [output-file] [optional-repo-url]");
-                    Console.WriteLine("\nExamples:");
-                    Console.WriteLine("  readmesync . README.md");
-                    Console.WriteLine("  readmesync --lang java ./src ROADMAP.md https://github.com/USER/REPO");
-                    Console.WriteLine("  readmesync --use-emojis . README.md\n");
+                    ShowUsage();
                     return;
                 }
 
-                // ------------------------------------------------------------
-                // Detect optional --lang flag
-                // ------------------------------------------------------------
-                string language = "csharp";
-                int langIndex = Array.IndexOf(args, "--lang");
-                if (langIndex != -1 && langIndex + 1 < args.Length)
-                {
-                    language = args[langIndex + 1].ToLowerInvariant();
-                    args = args.Where((x, i) => i != langIndex && i != langIndex + 1).ToArray();
-                }
-
-                // ------------------------------------------------------------
-                // Detect optional --exclude flag
-                // ------------------------------------------------------------
-                string[] excludes = { "bin", "obj", "node_modules", ".git", ".vs" };
-                int excludeIndex = Array.IndexOf(args, "--exclude");
-                if (excludeIndex != -1 && excludeIndex + 1 < args.Length)
-                {
-                    excludes = args[excludeIndex + 1].Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
-                    args = args.Where((x, i) => i != excludeIndex && i != excludeIndex + 1).ToArray();
-                }
-
-                // ------------------------------------------------------------
-                // Detect optional --no-tracking flag
-                // ------------------------------------------------------------
-                bool noTracking = args.Contains("--no-tracking");
-                args = args.Where(x => x != "--no-tracking").ToArray();
-
-                // ------------------------------------------------------------
-                // Detect optional --use-emojis flag
-                // ------------------------------------------------------------
-                bool useEmojis = args.Contains("--use-emojis");
-                args = args.Where(x => x != "--use-emojis").ToArray();
+                var config = ParseArguments(args);
 
                 // ============================================================
-                // 2️ Prepare Paths and Repo Info
+                // 2️ Initialize Services
                 // ============================================================
-                // Safely handle different argument orders and directories
-                string scanRoot = ".";
+                var repoFinder = new RepoRootFinder();
+                var analyzer = new CodeAnalyzer();
+                var markdownGen = new MarkdownGenerator();
+                var telemetry = new TelemetryService();
 
-                if (args.Length > 0 && Directory.Exists(args[0]))
-                    scanRoot = args[0];
-                else if (args.Length == 0)
-                    scanRoot = ".";
-                else if (args.Length > 1 && Directory.Exists(args[1]))
-                    scanRoot = args[1];
-
-                scanRoot = Path.GetFullPath(scanRoot);
-                string repoRoot = FindRepoRootNearest(scanRoot, out var reason) ?? scanRoot;
-
-                string outputFile = args.Length > 1
-                    ? (Path.IsPathRooted(args[1]) ? args[1] : Path.Combine(repoRoot, args[1]))
-                    : Path.Combine(repoRoot, "README.md");
+                // ============================================================
+                // 3️ Resolve Paths
+                // ============================================================
+                string scanRoot = ResolveScanRoot(config.Args);
+                string repoRoot = repoFinder.FindRepoRoot(scanRoot, out var reason) ?? scanRoot;
+                string outputFile = ResolveOutputFile(config.Args, repoRoot);
+                string repoUrl = config.Args.Length > 2 ? config.Args[2].TrimEnd('/') : string.Empty;
 
                 Directory.CreateDirectory(Path.GetDirectoryName(outputFile)!);
 
-                // Do NOT default to [YOUR_REPOSITORY_URL_HERE]
-                string repoUrl = args.Length > 2 ? args[2].TrimEnd('/') : string.Empty;
-
                 // ============================================================
-                // 3️ Language Configuration (Regex Patterns)
+                // 4️ Get Language Configuration
                 // ============================================================
-                var patterns = LanguagePatterns.For(language);
+                var patterns = LanguagePatterns.For(config.Language);
                 string fileExt = patterns.Extension;
 
+                // Start telemetry (non-blocking)
                 Task? telemetryTask = null;
-                if (!noTracking)
+                if (!config.NoTracking)
                 {
-                    telemetryTask = SendTelemetryAsync(language);
+                    telemetryTask = telemetry.SendTelemetryAsync(config.Language);
                 }
 
-                Console.WriteLine($"Language: {language}");
+                Console.WriteLine($"Language: {config.Language}");
                 Console.WriteLine($"Scanning directory: {scanRoot}");
                 Console.WriteLine($"Repo root:         {repoRoot}");
                 Console.WriteLine($"Detected by:       {reason ?? "(no marker; using scanRoot)"}");
                 Console.WriteLine($"Output file:       {outputFile}\n");
 
                 // ============================================================
-                // 4️ Scan Files
+                // 5️ Scan Files
                 // ============================================================
                 var codeFiles = Directory.GetFiles(scanRoot, $"*{fileExt}", SearchOption.AllDirectories)
-                    .Where(f => !excludes.Any(ex => 
-                        f.Contains($"{Path.DirectorySeparatorChar}{ex}{Path.DirectorySeparatorChar}") || 
+                    .Where(f => !config.Excludes.Any(ex =>
+                        f.Contains($"{Path.DirectorySeparatorChar}{ex}{Path.DirectorySeparatorChar}") ||
                         f.EndsWith($"{Path.DirectorySeparatorChar}{ex}")))
                     .ToArray();
 
@@ -169,129 +118,53 @@ namespace ReadmeSync
                 }
 
                 // ============================================================
-                // 5️ Analyze Source Files
+                // 6️ Analyze Source Files
                 // ============================================================
-                var files = codeFiles.Select(f =>
-                {
-                    string text = File.ReadAllText(f);
-                    var info = AnalyzeCode(text, patterns, language);
-                    if (info == null) return null;
-
-                    // ------------------------------------------------------------
-                    // Link construction
-                    // ------------------------------------------------------------
-                    // Converts full file paths into relative URLs for GitHub/GitLab/etc.
-                    // Only create clickable links if repoUrl is valid (http/https)
-                    string rel = Path.GetRelativePath(repoRoot, f).Replace(Path.DirectorySeparatorChar, '/');
-                    string? fileUrl = repoUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-                        ? $"{repoUrl}/{rel}"
-                        : null;
-
-                    info.Path = rel;
-                    info.Link = fileUrl;
-                    return info;
-                })
-                .Where(f => f != null)
-                .GroupBy(f => f.Namespace)
-                .OrderBy(g => g.Key)
-                .ToList();
-
-                // ============================================================
-                // 6️ Compute Summary Statistics
-                // ============================================================
-                int nsCount = files.Count;
-                int classCount = files.Sum(g => g.Count());
-                int methodCount = files.Sum(g => g.SelectMany(c => c.Methods).Count());
-                int todoCount = files.Sum(g => g.SelectMany(c => c.Todos).Count());
-
-                // ============================================================
-                // 7️ Preserve Manual Section
-                // ============================================================
-                string manual = "";
-                if (File.Exists(outputFile))
-                {
-                    string existing = File.ReadAllText(outputFile);
-                    int marker = existing.IndexOf("<!-- AUTO-GENERATED BELOW");
-                    if (marker >= 0)
-                        manual = existing[..marker].TrimEnd() + "\n\n";
-                }
-
-                // ============================================================
-                // 8️ Write Auto-Generated Markdown
-                // ============================================================
-                using var sw = new StreamWriter(outputFile, false);
-                sw.WriteLine(manual);
-                sw.WriteLine("<!-- AUTO-GENERATED BELOW – DO NOT EDIT -->");
-                
-                string titleEmoji = useEmojis ? "🧮 " : "";
-                sw.WriteLine($"\n# {titleEmoji}Code Overview (auto-generated)\n");
-                sw.WriteLine("This section is automatically generated by [ReadmeSync](https://github.com/tombomeke-ehb/ReadmeSync)\n");
-                sw.WriteLine("Made by tombomeke Studios. To update, run the ReadmeSync tool locally.\n");
-                sw.WriteLine($"_Language: **{language.ToUpper()}**_");
-                sw.WriteLine($"_Last updated: **{DateTime.Now:yyyy-MM-dd HH:mm}**_\n");
-                
-                string statsEmoji = useEmojis ? "📊 " : "";
-                sw.WriteLine($"{statsEmoji}**{nsCount} Packages · {classCount} Types · {methodCount} Methods · {todoCount} TODOs**\n");
-                sw.WriteLine("");
-
-                // ============================================================
-                // Namespace Emojis
-                // ============================================================
-                string[] emojis = { "🧱", "⚔️", "🧙", "🏹", "🐉", "🏰", "🧭", "🪄", "🧰", "🎯", "📦", "🧩" };
-                int eIndex = 0;
-
-                foreach (var nsGroup in files)
-                {
-                    string nsPrefix = useEmojis ? $"{emojis[eIndex++ % emojis.Length]} " : "";
-                    sw.WriteLine($"\n## {nsPrefix}{nsGroup.Key}\n");
-
-                    foreach (var file in nsGroup)
+                var files = codeFiles
+                    .Select(f =>
                     {
-                        // Only clickable if valid link, else inline code
-                        string typeLabel = string.IsNullOrEmpty(file.TypeKeyword) ? "class" : file.TypeKeyword;
-                        if (!string.IsNullOrEmpty(file.Link))
-                            sw.WriteLine($"### [{file.Class}{fileExt}]({file.Link}) *({typeLabel})*");
-                        else
-                            sw.WriteLine($"### `{file.Class}{fileExt}` *({typeLabel})*");
+                        string text = File.ReadAllText(f);
+                        var info = analyzer.AnalyzeCode(text, patterns, config.Language);
+                        if (info == null) return null;
 
-                        if (!string.IsNullOrEmpty(file.Inheritance))
-                            sw.WriteLine($"**Inherits:** `{file.Inheritance}`\n");
+                        // Build relative path and optional link
+                        string rel = Path.GetRelativePath(repoRoot, f).Replace(Path.DirectorySeparatorChar, '/');
+                        string? fileUrl = repoUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                            ? $"{repoUrl}/{rel}"
+                            : null;
 
-                        if (!string.IsNullOrEmpty(file.Summary))
-                            sw.WriteLine($"> {file.Summary}\n");
+                        info.Path = rel;
+                        info.Link = fileUrl;
+                        return info;
+                    })
+                    .Where(f => f != null)
+                    .GroupBy(f => f.Namespace)
+                    .OrderBy(g => g.Key)
+                    .ToList();
 
-                        if (file.Methods.Any())
-                        {
-                            sw.WriteLine("**Public Methods:**");
-                            foreach (var m in file.Methods)
-                                sw.WriteLine($"- `{m}()`");
-                        }
-                        else
-                            sw.WriteLine("_No public methods found._");
-
-                        if (file.Todos.Any())
-                        {
-                            sw.WriteLine("\n**TODOs:**");
-                            foreach (var todo in file.Todos)
-                                sw.WriteLine($"- [ ] {todo}");
-                        }
-
-                        sw.WriteLine();
-                    }
-                }
+                // ============================================================
+                // 7️ Generate Markdown
+                // ============================================================
+                markdownGen.GenerateMarkdown(
+                    outputFile,
+                    files,
+                    config.Language,
+                    fileExt,
+                    config.UseEmojis,
+                    repoUrl
+                );
 
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine("\nReadmeSync completed successfully!");
                 Console.ResetColor();
                 Console.WriteLine($"Output file: {Path.GetFullPath(outputFile)}\n");
 
-                // Wacht maximaal 1.5 seconde op de telemetrie (zodat de CLI niet hangt bij traag internet)
+                // Wait for telemetry (max 1.5 seconds)
                 if (telemetryTask != null)
                 {
                     Task.WaitAny(telemetryTask, Task.Delay(1500));
                 }
             }
-
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -302,202 +175,78 @@ namespace ReadmeSync
         }
 
         // ============================================================
-        // Repo Root Finder
+        // Helper Methods
         // ============================================================
-        /// <summary>
-        /// Recursively searches upward from the given path to locate the
-        /// most likely repository root (preferring .git, solution, or README).
-        /// </summary>
-        private static string? FindRepoRootNearest(string startPath, out string? reason)
+
+        private static void ShowUsage()
         {
-            reason = null;
-            var dir = new DirectoryInfo(Path.GetFullPath(startPath));
-
-            while (dir != null)
-            {
-                if (Directory.Exists(Path.Combine(dir.FullName, ".git")))
-                {
-                    reason = $".git at {dir.FullName}";
-                    return dir.FullName;
-                }
-
-                if (Directory.EnumerateFiles(dir.FullName, "*.sln").Any())
-                {
-                    reason = $"solution (*.sln) at {dir.FullName}";
-                    return dir.FullName;
-                }
-
-                if (File.Exists(Path.Combine(dir.FullName, "README.md")) ||
-                    File.Exists(Path.Combine(dir.FullName, "LICENSE")) ||
-                    Directory.Exists(Path.Combine(dir.FullName, ".github")))
-                {
-                    reason = $"marker file at {dir.FullName}";
-                    return dir.FullName;
-                }
-
-                dir = dir.Parent;
-            }
-
-            return null;
+            Console.WriteLine("Usage:");
+            Console.WriteLine("  readmesync [--lang csharp|java|python|typescript|javascript] [--use-emojis] [--exclude folders] [--no-tracking] [scan-root] [output-file] [optional-repo-url]");
+            Console.WriteLine("\nExamples:");
+            Console.WriteLine("  readmesync . README.md");
+            Console.WriteLine("  readmesync --lang java ./src ROADMAP.md https://github.com/USER/REPO");
+            Console.WriteLine("  readmesync --lang python ./app README.md");
+            Console.WriteLine("  readmesync --lang typescript ./src DOCS.md");
+            Console.WriteLine("  readmesync --use-emojis . README.md\n");
         }
 
-        // ============================================================
-        // Telemetry (Supabase)
-        // ============================================================
-        private static async Task SendTelemetryAsync(string language)
+        private static Config ParseArguments(string[] args)
         {
-            try
+            var config = new Config();
+
+            // Parse --lang
+            int langIndex = Array.IndexOf(args, "--lang");
+            if (langIndex != -1 && langIndex + 1 < args.Length)
             {
-                string supabaseUrl = "https://botvdxbfaffjyaidiulb.supabase.co";
-                string supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJvdHZkeGJmYWZmanlhaWRpdWxiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1OTA5MDAsImV4cCI6MjA4NzE2NjkwMH0.ax0GpGn9SktnJVfDnLmSo2IV2n8AZnIrFb7-3ZCG1jw";
-
-                if (supabaseUrl.Contains("VUL_HIER")) return;
-
-                using var client = new HttpClient();
-                client.DefaultRequestHeaders.Add("apikey", supabaseKey);
-                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {supabaseKey}");
-
-                var payload = new
-                {
-                    tool_version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown",
-                    language_scanned = language,
-                    os_platform = RuntimeInformation.OSDescription
-                };
-
-                var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-                
-                await client.PostAsync($"{supabaseUrl}/rest/v1/telemetry_logs", content);
-            }
-            catch
-            {
-                // Fouten negeren we, de tool moet altijd blijven werken voor de gebruiker
-            }
-        }
-
-        // ============================================================
-        // Code Analyzer (Extracted for testability)
-        // ============================================================
-        public static CodeFileInfo? AnalyzeCode(string text, LanguagePatterns patterns, string language)
-        {
-            string ns = Regex.Match(text, patterns.Namespace, RegexOptions.Compiled).Groups[1].Value.Trim();
-
-            var classMatch = Regex.Match(text, patterns.Class, RegexOptions.Compiled);
-            string typeKeyword = classMatch.Groups[1].Value.Trim();
-            string cls = classMatch.Groups[2].Value.Trim();
-            string inheritance = classMatch.Groups[3].Value.Trim();
-
-            if (string.IsNullOrWhiteSpace(ns) || string.IsNullOrWhiteSpace(cls))
-                return null;
-
-            if (inheritance.StartsWith(":")) 
-                inheritance = inheritance.Substring(1).Trim();
-            
-            int whereIdx = inheritance.IndexOf("where");
-            if (whereIdx >= 0) 
-                inheritance = inheritance.Substring(0, whereIdx).Trim();
-
-            string summary = "";
-            var summaryMatch = Regex.Match(text, patterns.Summary, RegexOptions.Compiled | RegexOptions.Singleline);
-            if (summaryMatch.Success)
-            {
-                summary = summaryMatch.Groups[1].Value;
-                if (language == "csharp")
-                    summary = Regex.Replace(summary, @"///\s?", "").Trim();
-                else if (language == "java")
-                    summary = Regex.Replace(summary, @"\*\s?", "").Trim();
-                
-                summary = Regex.Replace(summary, @"\s+", " ").Trim();
+                config.Language = args[langIndex + 1].ToLowerInvariant();
+                args = args.Where((x, i) => i != langIndex && i != langIndex + 1).ToArray();
             }
 
-            var methods = Regex.Matches(text, patterns.Method, RegexOptions.Compiled)
-                .Cast<Match>()
-                .Select(m => m.Groups[1].Value)
-                .Where(m => m != cls)
-                .Distinct()
-                .ToList();
-
-            var todos = Regex.Matches(text, @"//\s*TODO[: ](.*)", RegexOptions.IgnoreCase | RegexOptions.Compiled)
-                .Cast<Match>()
-                .Select(m => m.Groups[1].Value.Trim())
-                .ToList();
-
-            return new CodeFileInfo
+            // Parse --exclude
+            int excludeIndex = Array.IndexOf(args, "--exclude");
+            if (excludeIndex != -1 && excludeIndex + 1 < args.Length)
             {
-                Namespace = ns,
-                TypeKeyword = typeKeyword,
-                Class = cls,
-                Inheritance = inheritance,
-                Summary = summary,
-                Methods = methods,
-                Todos = todos
-            };
-        }
-    }
+                config.Excludes = args[excludeIndex + 1].Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+                args = args.Where((x, i) => i != excludeIndex && i != excludeIndex + 1).ToArray();
+            }
 
-    public class CodeFileInfo
-    {
-        public string Namespace { get; set; } = "";
-        public string TypeKeyword { get; set; } = "";
-        public string Class { get; set; } = "";
-        public string Inheritance { get; set; } = "";
-        public string Summary { get; set; } = "";
-        public System.Collections.Generic.List<string> Methods { get; set; } = new();
-        public System.Collections.Generic.List<string> Todos { get; set; } = new();
-        public string Path { get; set; } = "";
-        public string? Link { get; set; }
-    }
+            // Parse flags
+            config.NoTracking = args.Contains("--no-tracking");
+            config.UseEmojis = args.Contains("--use-emojis");
 
-    // ============================================================
-    // Language Patterns (Extensible)
-    // ============================================================
-    /// <summary>
-    /// Defines the regex profiles for different languages.
-    /// Each profile includes:
-    ///  - Namespace/Package pattern
-    ///  - Class pattern
-    ///  - Public method pattern
-    ///  - File extension
-    ///
-    /// To extend:
-    /// Add a new case (e.g. "python") and specify patterns accordingly.
-    /// </summary>
-    public class LanguagePatterns
-    {
-        public string Namespace { get; }
-        public string Class { get; }
-        public string Method { get; }
-        public string Extension { get; }
-        public string Summary { get; }
+            args = args.Where(x => x != "--no-tracking" && x != "--use-emojis").ToArray();
+            config.Args = args;
 
-        private LanguagePatterns(string ns, string cls, string method, string ext, string summary)
-        {
-            Namespace = ns;
-            Class = cls;
-            Method = method;
-            Extension = ext;
-            Summary = summary;
+            return config;
         }
 
-        public static LanguagePatterns For(string lang)
+        private static string ResolveScanRoot(string[] args)
         {
-            return lang switch
-            {
-                "java" => new LanguagePatterns(
-                    @"package\s+([A-Za-z0-9_.]+)",                  // Matches `package com.example.app`
-                    @"(class|interface|enum|record)\s+([A-Za-z0-9_]+)\s*([^{]*)", // Matches `class Player extends Entity`
-                    @"public\s+[A-Za-z0-9_<>,\[\]\s]+\s+([A-Za-z0-9_]+)\s*\(", // Matches `public void attack(`
-                    ".java",
-                    @"/\*\*(.*?)\*/"                                // Matches Javadoc
-                ),
+            string scanRoot = ".";
 
-                _ => new LanguagePatterns( // Default: C#
-                    @"namespace\s+([A-Za-z0-9_.]+)",               // Matches `namespace MyApp.Core`
-                    @"(class|interface|record|struct|enum)\s+([A-Za-z0-9_]+)\s*([^{]*)", // Matches `class Player : Entity`
-                    @"public\s+[A-Za-z0-9_<>,\[\]\s]+\s+([A-Za-z0-9_]+)\s*\(", // Matches `public int Attack(`
-                    ".cs",
-                    @"///\s*<summary>(.*?)</summary>"              // Matches XML doc summary
-                )
-            };
+            if (args.Length > 0 && Directory.Exists(args[0]))
+                scanRoot = args[0];
+            else if (args.Length > 1 && Directory.Exists(args[1]))
+                scanRoot = args[1];
+
+            return Path.GetFullPath(scanRoot);
+        }
+
+        private static string ResolveOutputFile(string[] args, string repoRoot)
+        {
+            if (args.Length > 1)
+                return Path.IsPathRooted(args[1]) ? args[1] : Path.Combine(repoRoot, args[1]);
+
+            return Path.Combine(repoRoot, "README.md");
+        }
+
+        private class Config
+        {
+            public string Language { get; set; } = "csharp";
+            public string[] Excludes { get; set; } = { "bin", "obj", "node_modules", ".git", ".vs", "__pycache__", "dist", "build" };
+            public bool NoTracking { get; set; } = false;
+            public bool UseEmojis { get; set; } = false;
+            public string[] Args { get; set; } = Array.Empty<string>();
         }
     }
 }
