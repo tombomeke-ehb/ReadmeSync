@@ -9,9 +9,9 @@
 
 ---
 
-## ✨ Features
+## Features
 
-- **Multi-Language Support**: **C#**, **Java**, **Python**, **TypeScript**, and **JavaScript** 🚀
+- **Multi-Language Support**: **C#**, **Java**, **Python**, **TypeScript**, and **JavaScript**
 - **Deep Code Insights**: Extracts `class`, `interface`, `record`, `struct`, and `enum` types.
 - **Documentation Extraction**: Automatically pulls documentation comments:
   - C#: `/// <summary>`
@@ -25,7 +25,7 @@
 
 ---
 
-## 📦 Installation
+## Installation
 
 ReadmeSync is distributed as a .NET Global Tool. You can install it easily via the command line:
 
@@ -40,7 +40,7 @@ dotnet tool update --global ReadmeSync
 
 ---
 
-## 🚀 Usage
+## Usage
 
 Navigate to your project directory and run the tool:
 
@@ -75,36 +75,43 @@ readmesync --lang typescript ./src DOCS.md
 readmesync . README.md https://github.com/YOUR_USERNAME/YOUR_REPO
 ```
 
-**6. Use Emojis for Visual Appeal**
-```bash
-readmesync --use-emojis . README.md
-```
-
-**7. Custom Exclusions**
+**6. Custom Exclusions**
 ```bash
 readmesync --exclude "test,temp,cache" . README.md
 ```
 
 ---
 
-## 🌐 Supported Languages
+## Supported Languages
 
 | Language | Extension | Status |
 |----------|-----------|--------|
-| C# | `.cs` | ✅ Full Support |
-| Java | `.java` | ✅ Full Support |
-| Python | `.py` | ✅ Full Support (v1.3.0+) |
-| TypeScript | `.ts` | ✅ Full Support (v1.3.0+) |
-| JavaScript | `.js` | ✅ Full Support (v1.3.0+) |
+| C# | `.cs` | Full Support |
+| Java | `.java` | Full Support |
+| Python | `.py` | Full Support (v1.3.0+) |
+| TypeScript | `.ts` | Full Support (v1.3.0+) |
+| JavaScript | `.js` | Full Support (v1.3.0+) |
+| PHP | `.php` | Full Support (v1.4.0+) |
 
 ---
 
-## 🔧 Command-Line Options
+## Command-Line Options
 
 | Flag | Description |
 |------|-------------|
 | `--lang <language>` | Specify language: `csharp`, `java`, `python`, `typescript`, `javascript` (default: `csharp`) |
 | `--use-emojis` | Enable emoji icons in the generated output |
+| `--json` | Export the analysis data to a structured JSON file instead of Markdown |
 | `--exclude <folders>` | Comma-separated list of folders to exclude |
 | `--no-tracking` | Disable anonymous telemetry |
+
+---
+
+## Build a Live Roadmap (API)
+Using the `--json` flag, you can easily build APIs or web integrations. 
+
+```bash
+readmesync --json . roadmap.json
+```
+This generates a clean, readable JSON file containing all classes, namespaces, and most importantly: your `// TODO` comments! You can host this file on your server to show visitors what you are currently working on.
 

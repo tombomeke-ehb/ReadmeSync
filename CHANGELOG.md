@@ -5,7 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.0] - 2025-01-XX
+## [1.4.0] - 2026-03-13
+
+### Added
+- **JSON Export (`--json`)**: Added ability to export the entire code analysis (including `// TODO`s) to a structured JSON file. This is perfect for building Live Roadmaps or APIs.
+- **Custom Telemetry Server**: Updated the anonymous telemetry service to point to the official `tombomekestudio.com` .NET backend instead of third-party services.
+- **Professional Formatting**: Removed emojis from documentation and output styling for a cleaner, enterprise-ready look.
+
+## [1.3.0] - 2026-02-25
 
 ### Added
 - **Python support** - Full parsing of Python classes, methods, and docstrings
@@ -36,21 +43,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Inheritance parsing for TypeScript/JavaScript
 - Docstring extraction for Python
 
-## [1.2.2] - 2025-01-XX
+## [1.2.2] - 2026-02-18
 
 ### Fixed
 - Initial stable release
 - C# and Java support
 - Basic telemetry
 
-## [1.2.0] - 2025-01-XX
+## [1.2.0] - 2026-02-16
 
 ### Added
 - Java language support
 - Telemetry tracking
 - Custom exclusions via `--exclude` flag
 
-## [1.0.0] - 2025-01-XX
+## [1.0.0] - 2025-11-04
 
 ### Added
 - Initial release
