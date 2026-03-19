@@ -31,6 +31,19 @@ namespace ReadmeSync.Services
                 cls = classMatch.Groups[1].Value.Trim();
                 inheritance = classMatch.Groups[2].Value.Trim();
             }
+            else if (language == "php")
+            {
+                typeKeyword = classMatch.Groups[1].Value.Trim();
+                cls = classMatch.Groups[2].Value.Trim();
+                string extends = classMatch.Groups[3].Value.Trim();
+                string implements = classMatch.Groups[4].Value.Trim();
+                
+                var inheritList = new List<string>();
+                if (!string.IsNullOrEmpty(extends)) inheritList.Add(extends);
+                if (!string.IsNullOrEmpty(implements)) inheritList.Add(implements);
+                
+                inheritance = string.Join(", ", inheritList);
+            }
             else
             {
                 typeKeyword = classMatch.Groups[1].Value.Trim();
@@ -119,7 +132,7 @@ namespace ReadmeSync.Services
             // Language-specific cleanup
             if (language == "csharp")
                 summary = Regex.Replace(summary, @"///\s?", "").Trim();
-            else if (language == "java" || language == "typescript" || language == "javascript")
+            else if (language == "java" || language == "typescript" || language == "javascript" || language == "php")
                 summary = Regex.Replace(summary, @"\*\s?", "").Trim();
             else if (language == "python")
             {

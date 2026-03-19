@@ -38,6 +38,14 @@ namespace ReadmeSync.Models
                     @"/\*\*(.*?)\*/"
                 ),
 
+                "php" => new LanguagePatterns(
+                    @"namespace\s+([A-Za-z0-9_\\]+);",
+                    @"(class|interface|trait)\s+([A-Za-z0-9_]+)\s*(?:extends\s+([A-Za-z0-9_]+))?\s*(?:implements\s+([A-Za-z0-9_,\s]+))?",
+                    @"public\s+function\s+([A-Za-z0-9_]+)\s*\(",
+                    ".php",
+                    @"/\*\*(.*?)\*/"
+                ),
+
                 "python" => new LanguagePatterns(
                     @"#\s*Package:\s*([A-Za-z0-9_.]+)",
                     @"class\s+([A-Za-z0-9_]+)\s*(?:\(([^)]*)\))?:",
