@@ -23,12 +23,13 @@ using ReadmeSync.Services;
 // - Optional emoji icons in output (disabled by default)
 //
 // Usage
-//   readmesync [--lang csharp|java|python|typescript|javascript] [--use-emojis] [--exclude folders] [--no-tracking] [scan-root] [output-file] [optional-repo-url]
+//   readmesync [--lang csharp|java|python|typescript|javascript|php] [--use-emojis] [--json] [--exclude folders] [--no-tracking] [scan-root] [output-file] [optional-repo-url]
 //
 // Example:
 //   readmesync --lang java ./src README.md https://github.com/tombomeke-ehb/ReadmeSync
 //   readmesync --lang python . README.md
 //   readmesync --use-emojis . README.md
+//   readmesync --json . roadmap.json
 //
 // Notes
 // - Safe to run multiple times; it only replaces content *below* the marker
@@ -36,7 +37,7 @@ using ReadmeSync.Services;
 // - Emojis are disabled by default for a more professional output
 //
 // © 2025 Tombomeke Studios — All rights reserved
-// ============================================================================
+// ============================================================
 
 namespace ReadmeSync
 {
@@ -69,6 +70,7 @@ namespace ReadmeSync
                 var repoFinder = new RepoRootFinder();
                 var analyzer = new CodeAnalyzer();
                 var markdownGen = new MarkdownGenerator();
+                var jsonGen = new JsonGenerator();
                 var telemetry = new TelemetryService();
 
                 // ============================================================
@@ -143,16 +145,23 @@ namespace ReadmeSync
                     .ToList();
 
                 // ============================================================
-                // 7️ Generate Markdown
+                // 7️ Generate Output (Markdown or JSON)
                 // ============================================================
-                markdownGen.GenerateMarkdown(
-                    outputFile,
-                    files,
-                    config.Language,
-                    fileExt,
-                    config.UseEmojis,
-                    repoUrl
-                );
+                if (config.OutputJson)
+                {
+                    jsonGen.GenerateJson(outputFile, files);
+                }
+                else
+                {
+                    markdownGen.GenerateMarkdown(
+                        outputFile,
+                        files,
+                        config.Language,
+                        fileExt,
+                        config.UseEmojis,
+                        repoUrl
+                    );
+                }
 
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine("\nReadmeSync completed successfully!");
@@ -181,13 +190,14 @@ namespace ReadmeSync
         private static void ShowUsage()
         {
             Console.WriteLine("Usage:");
-            Console.WriteLine("  readmesync [--lang csharp|java|python|typescript|javascript] [--use-emojis] [--exclude folders] [--no-tracking] [scan-root] [output-file] [optional-repo-url]");
+            Console.WriteLine("  readmesync [--lang csharp|java|python|typescript|javascript|php] [--use-emojis] [--json] [--exclude folders] [--no-tracking] [scan-root] [output-file] [optional-repo-url]");
             Console.WriteLine("\nExamples:");
             Console.WriteLine("  readmesync . README.md");
             Console.WriteLine("  readmesync --lang java ./src ROADMAP.md https://github.com/USER/REPO");
             Console.WriteLine("  readmesync --lang python ./app README.md");
             Console.WriteLine("  readmesync --lang typescript ./src DOCS.md");
-            Console.WriteLine("  readmesync --use-emojis . README.md\n");
+            Console.WriteLine("  readmesync --use-emojis . README.md");
+            Console.WriteLine("  readmesync --json . roadmap.json\n");
         }
 
         private static Config ParseArguments(string[] args)
@@ -213,8 +223,9 @@ namespace ReadmeSync
             // Parse flags
             config.NoTracking = args.Contains("--no-tracking");
             config.UseEmojis = args.Contains("--use-emojis");
+            config.OutputJson = args.Contains("--json");
 
-            args = args.Where(x => x != "--no-tracking" && x != "--use-emojis").ToArray();
+            args = args.Where(x => x != "--no-tracking" && x != "--use-emojis" && x != "--json").ToArray();
             config.Args = args;
 
             return config;
@@ -246,6 +257,7 @@ namespace ReadmeSync
             public string[] Excludes { get; set; } = { "bin", "obj", "node_modules", ".git", ".vs", "__pycache__", "dist", "build" };
             public bool NoTracking { get; set; } = false;
             public bool UseEmojis { get; set; } = false;
+            public bool OutputJson { get; set; } = false;
             public string[] Args { get; set; } = Array.Empty<string>();
         }
     }
