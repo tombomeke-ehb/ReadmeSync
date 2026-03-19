@@ -328,5 +328,38 @@ public class Player : Entity, IMovable, IAttackable
             Assert.NotNull(result);
             Assert.Equal("Entity, IMovable, IAttackable", result.Inheritance);
         }
+
+        [Fact]
+        public void AnalyzeCode_Php_ExtractsCorrectly()
+        {
+            // Arrange
+            string code = @"
+namespace App\Controllers;
+
+/**
+ * Controller for users
+ */
+class UserController extends BaseController implements IController {
+    public function index() { }
+    public function show(int $id) { }
+
+    // TODO: Implement update method
+}";
+            var patterns = LanguagePatterns.For("php");
+
+            // Act
+            var result = _analyzer.AnalyzeCode(code, patterns, "php");
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(@"App\Controllers", result.Namespace);
+            Assert.Equal("class", result.TypeKeyword);
+            Assert.Equal("UserController", result.Class);
+            Assert.Equal("BaseController, IController", result.Inheritance);
+            Assert.Equal("Controller for users", result.Summary);
+            Assert.Contains("index", result.Methods);
+            Assert.Contains("show", result.Methods);
+            Assert.Contains("Implement update method", result.Todos);
+        }
     }
 }
