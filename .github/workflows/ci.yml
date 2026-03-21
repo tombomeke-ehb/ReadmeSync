@@ -38,7 +38,7 @@ jobs:
         run: dotnet build --configuration Release --no-restore
 
       - name: Run tests with coverage
-        run: dotnet test --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+        run: dotnet test --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage --logger "trx;LogFileName=test-results.trx"
 
       - name: ReportGenerator
         uses: danielpalme/ReportGenerator-GitHub-Action@5.2.0
