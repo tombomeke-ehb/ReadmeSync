@@ -361,5 +361,77 @@ class UserController extends BaseController implements IController {
             Assert.Contains("show", result.Methods);
             Assert.Contains("Implement update method", result.Todos);
         }
+
+        [Fact]
+        public void AnalyzeCode_Go_LanguageSupported()
+        {
+            // Arrange
+            var patterns = LanguagePatterns.For("go");
+
+            // Act & Assert
+            Assert.NotEmpty(patterns.Namespace);
+            Assert.NotEmpty(patterns.Class);
+            Assert.Equal(".go", patterns.Extension);
+        }
+
+        [Fact]
+        public void AnalyzeCode_Rust_LanguageSupported()
+        {
+            // Arrange
+            var patterns = LanguagePatterns.For("rust");
+
+            // Act & Assert
+            Assert.NotEmpty(patterns.Namespace);
+            Assert.NotEmpty(patterns.Class);
+            Assert.Equal(".rs", patterns.Extension);
+        }
+
+        [Fact]
+        public void AnalyzeCode_Ruby_LanguageSupported()
+        {
+            // Arrange
+            var patterns = LanguagePatterns.For("ruby");
+
+            // Act & Assert
+            Assert.NotEmpty(patterns.Namespace);
+            Assert.NotEmpty(patterns.Class);
+            Assert.Equal(".rb", patterns.Extension);
+        }
+
+        [Fact]
+        public void AnalyzeCode_Kotlin_LanguageSupported()
+        {
+            // Arrange
+            var patterns = LanguagePatterns.For("kotlin");
+
+            // Act & Assert
+            Assert.NotEmpty(patterns.Namespace);
+            Assert.NotEmpty(patterns.Class);
+            Assert.Equal(".kt", patterns.Extension);
+        }
+
+        [Fact]
+        public void AnalyzeCode_Swift_LanguageSupported()
+        {
+            // Arrange
+            var patterns = LanguagePatterns.For("swift");
+
+            // Act & Assert
+            Assert.NotEmpty(patterns.Namespace);
+            Assert.NotEmpty(patterns.Class);
+            Assert.Equal(".swift", patterns.Extension);
+        }
+
+        [Fact]
+        public void AnalyzeCode_Cpp_LanguageSupported()
+        {
+            // Arrange
+            var patterns = LanguagePatterns.For("cpp");
+
+            // Act & Assert
+            Assert.NotEmpty(patterns.Namespace);
+            Assert.NotEmpty(patterns.Class);
+            Assert.Equal(".cpp", patterns.Extension);
+        }
     }
 }

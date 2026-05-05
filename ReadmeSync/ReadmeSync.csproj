@@ -11,10 +11,10 @@
 
 		<!-- Package metadata -->
 		<PackageId>ReadmeSync</PackageId>
-		<Version>1.4.0</Version>
+		<Version>2.0.0</Version>
 		<Authors>Tombomeke Studios</Authors>
 		<Company>Tombomeke Studios</Company>
-		<Description>A lightweight C# CLI tool that auto-generates README or ROADMAP files based on your project's structure. Now with PHP, Python and TypeScript support!</Description>
+		<Description>A lightweight C# tool with interactive TUI and CLI that auto-generates README or ROADMAP files. Now with 12 language support (C#, Java, Python, TypeScript, JavaScript, PHP, Go, Rust, Ruby, Kotlin, Swift, C++), dry-run preview, and extensive customization options!</Description>
 		<PackageTags>readme roadmap csharp java php python typescript documentation cli generator tombomeke</PackageTags>
 
 		<!-- License & URLs -->
@@ -35,6 +35,10 @@
 	<ItemGroup>
 		<!-- Include README from parent directory -->
 		<None Include="..\README.md" Pack="true" PackagePath="\" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Spectre.Console" Version="0.49.1" />
 	</ItemGroup>
 
 	<ItemGroup>

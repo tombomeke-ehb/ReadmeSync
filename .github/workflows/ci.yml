@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        dotnet-version: ['8.0.x']
+        dotnet-version: ['9.0.x']
     
     steps:
       - name: Checkout repository
@@ -65,7 +65,7 @@ jobs:
   code-quality:
     name: Code Quality Check
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -73,13 +73,40 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 9.0.x
 
       - name: Restore dependencies
         run: dotnet restore
+
+      - name: Check code formatting
+        run: dotnet format --verify-no-changes --verbosity diagnostic
 
       - name: Build solution
         run: dotnet build --configuration Release --no-restore
 
       - name: Verify no build warnings
         run: dotnet build --configuration Release --no-restore --warnaserror
+
+  security-scan:
+    name: Security Code Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: csharp
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Build solution
+        run: dotnet build --configuration Release
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
