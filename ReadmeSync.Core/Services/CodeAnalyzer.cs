@@ -14,16 +14,16 @@ namespace ReadmeSync.Services
         /// <summary>
         /// Analyzes source code text and extracts namespace, class, methods, TODOs, and documentation.
         /// </summary>
-        public CodeFileInfo? AnalyzeCode(string text, LanguagePatterns patterns, string language)
+        public CodeFileInfo? AnalyzeCode(string text, LanguagePatterns patterns, string language, bool includePrivate = false)
         {
             // Extract namespace/package
             string ns = ExtractNamespace(text, patterns, language);
 
             // Extract class information
             var classMatch = Regex.Match(text, patterns.Class, RegexOptions.Compiled);
-            
+
             string typeKeyword, cls, inheritance;
-            
+
             // Python has different group structure: class name is in group 1, inheritance in group 2
             if (language == "python")
             {
@@ -37,11 +37,11 @@ namespace ReadmeSync.Services
                 cls = classMatch.Groups[2].Value.Trim();
                 string extends = classMatch.Groups[3].Value.Trim();
                 string implements = classMatch.Groups[4].Value.Trim();
-                
+
                 var inheritList = new List<string>();
                 if (!string.IsNullOrEmpty(extends)) inheritList.Add(extends);
                 if (!string.IsNullOrEmpty(implements)) inheritList.Add(implements);
-                
+
                 inheritance = string.Join(", ", inheritList);
             }
             else
@@ -61,8 +61,8 @@ namespace ReadmeSync.Services
             // Extract documentation summary
             string summary = ExtractSummary(text, patterns, language);
 
-            // Extract public methods
-            var methods = ExtractMethods(text, patterns, cls);
+            // Extract public (and optionally private) methods
+            var methods = ExtractMethods(text, patterns, cls, includePrivate);
 
             // Extract TODO comments
             var todos = ExtractTodos(text);
@@ -149,14 +149,31 @@ namespace ReadmeSync.Services
             return summary;
         }
 
-        private List<string> ExtractMethods(string text, LanguagePatterns patterns, string className)
+        private List<string> ExtractMethods(string text, LanguagePatterns patterns, string className, bool includePrivate = false)
         {
-            return Regex.Matches(text, patterns.Method, RegexOptions.Compiled)
-                .Cast<Match>()
-                .Select(m => m.Groups[1].Value)
-                .Where(m => m != className && !string.IsNullOrWhiteSpace(m))
-                .Distinct()
-                .ToList();
+            var methods = new List<string>();
+
+            methods.AddRange(
+                Regex.Matches(text, patterns.Method, RegexOptions.Compiled)
+                    .Cast<Match>()
+                    .Select(m => m.Groups[1].Value)
+                    .Where(m => m != className && !string.IsNullOrWhiteSpace(m))
+                    .Distinct()
+            );
+
+            if (includePrivate)
+            {
+                var privatePattern = @"(?:private|protected)\s+[A-Za-z0-9_<>,\[\]\s]+\s+([A-Za-z0-9_]+)\s*\(";
+                methods.AddRange(
+                    Regex.Matches(text, privatePattern, RegexOptions.Compiled)
+                        .Cast<Match>()
+                        .Select(m => $"[private] {m.Groups[1].Value}")
+                        .Where(m => !string.IsNullOrWhiteSpace(m))
+                        .Distinct()
+                );
+            }
+
+            return methods;
         }
 
         private List<string> ExtractTodos(string text)

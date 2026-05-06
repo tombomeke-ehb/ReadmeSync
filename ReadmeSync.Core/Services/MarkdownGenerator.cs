@@ -21,7 +21,8 @@ namespace ReadmeSync.Services
             string language,
             string fileExtension,
             bool useEmojis,
-            string repoUrl)
+            string repoUrl,
+            bool summaryOnly = false)
         {
             // Preserve manual section
             string manual = PreserveManualContent(outputFile);
@@ -34,10 +35,14 @@ namespace ReadmeSync.Services
 
             // Write the markdown file
             using var sw = new StreamWriter(outputFile, false);
-            
+
             WriteHeader(sw, manual, language, useEmojis);
             WriteStatistics(sw, nsCount, classCount, methodCount, todoCount, useEmojis);
-            WriteNamespaces(sw, fileGroups, fileExtension, useEmojis);
+
+            if (!summaryOnly)
+            {
+                WriteNamespaces(sw, fileGroups, fileExtension, useEmojis);
+            }
         }
 
         /// <summary>
@@ -48,7 +53,8 @@ namespace ReadmeSync.Services
             string language,
             string fileExtension,
             bool useEmojis,
-            string repoUrl)
+            string repoUrl,
+            bool summaryOnly = false)
         {
             var sb = new StringBuilder();
 
@@ -59,7 +65,11 @@ namespace ReadmeSync.Services
 
             WriteHeaderToBuilder(sb, language, useEmojis);
             WriteStatisticsToBuilder(sb, nsCount, classCount, methodCount, todoCount, useEmojis);
-            WriteNamespacesToBuilder(sb, fileGroups, fileExtension, useEmojis);
+
+            if (!summaryOnly)
+            {
+                WriteNamespacesToBuilder(sb, fileGroups, fileExtension, useEmojis);
+            }
 
             return sb.ToString();
         }
