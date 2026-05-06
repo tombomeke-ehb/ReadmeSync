@@ -9,7 +9,7 @@ namespace ReadmeSync.Tests
         private readonly DiffService _diffService = new();
 
         [Fact]
-        public void GenerateDiff_IdenticalContent_ReturnsEmpty()
+        public void GenerateDiff_IdenticalContent_ReturnsOnlyUnchanged()
         {
             // Arrange
             string content = @"Line 1
@@ -17,13 +17,13 @@ Line 2
 Line 3";
 
             // Act
-            string diff = _diffService.GenerateDiff(content, content);
+            var diffLines = _diffService.GetDiffLines(content, content);
 
             // Assert
-            Assert.NotNull(diff);
-            // Identical content should produce minimal diff
-            Assert.DoesNotContain("-", diff);
-            Assert.DoesNotContain("+", diff);
+            Assert.NotNull(diffLines);
+            // Identical content should have no added or removed lines
+            Assert.DoesNotContain(diffLines, d => d.Type == '+');
+            Assert.DoesNotContain(diffLines, d => d.Type == '-');
         }
 
         [Fact]
@@ -199,7 +199,7 @@ Line 3";
             Assert.NotNull(diffLines);
             Assert.NotEmpty(diffLines);
             // Should have at least one change
-            var changes = diffLines.Where(d => d.Type != "unchanged").ToList();
+            var changes = diffLines.Where(d => d.Type != ' ').ToList();
             Assert.NotEmpty(changes);
         }
 
@@ -216,7 +216,7 @@ Line 3";
 
             // Assert
             Assert.NotNull(diffLines);
-            Assert.True(diffLines.All(d => d.Type == "unchanged"));
+            Assert.True(diffLines.All(d => d.Type == ' '));
         }
 
         [Fact]
@@ -233,8 +233,8 @@ New Line 2";
 
             // Assert
             Assert.NotNull(diffLines);
-            var hasRemoved = diffLines.Any(d => d.Type == "removed");
-            var hasAdded = diffLines.Any(d => d.Type == "added");
+            var hasRemoved = diffLines.Any(d => d.Type == '-');
+            var hasAdded = diffLines.Any(d => d.Type == '+');
             Assert.True(hasRemoved || hasAdded);
         }
 

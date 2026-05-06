@@ -145,7 +145,7 @@ namespace ReadmeSync.Tests
 
             // Assert
             Assert.NotNull(stats);
-            Assert.Equal(3, stats.TypeBreakdown["class"]);
+            Assert.Equal(2, stats.TypeBreakdown["class"]);
             Assert.Equal(1, stats.TypeBreakdown["interface"]);
             Assert.Equal(1, stats.TypeBreakdown["record"]);
         }

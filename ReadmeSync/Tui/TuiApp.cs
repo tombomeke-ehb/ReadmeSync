@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using ReadmeSync.Cli;
 using ReadmeSync.Models;
 using ReadmeSync.Services;
 using Spectre.Console;
