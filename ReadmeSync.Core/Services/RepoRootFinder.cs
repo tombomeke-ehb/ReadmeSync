@@ -10,25 +10,30 @@ namespace ReadmeSync.Services
     public class RepoRootFinder
     {
         /// <summary>
-        /// Recursively searches upward from the given path to locate the
-        /// most likely repository root (preferring .git, solution, or README).
+        /// Searches upward from the given path to locate the most likely repository root.
+        /// A git repository always wins; without one, the nearest directory holding a
+        /// solution, README, LICENSE or project file is used.
         /// </summary>
         public string? FindRepoRoot(string startPath, out string? reason)
         {
             reason = null;
-            var dir = new DirectoryInfo(Path.GetFullPath(startPath));
+            var start = new DirectoryInfo(Path.GetFullPath(startPath));
 
-            while (dir != null)
+            // Priority 1: git repository (a directory, or a file in worktrees and submodules)
+            for (var dir = start; dir != null; dir = dir.Parent)
             {
-                // Priority 1: .git directory
-                if (Directory.Exists(Path.Combine(dir.FullName, ".git")))
+                string git = Path.Combine(dir.FullName, ".git");
+                if (Directory.Exists(git) || File.Exists(git))
                 {
                     reason = $".git at {dir.FullName}";
                     return dir.FullName;
                 }
+            }
 
+            for (var dir = start; dir != null; dir = dir.Parent)
+            {
                 // Priority 2: Solution file
-                if (Directory.EnumerateFiles(dir.FullName, "*.sln").Any())
+                if (HasFile(dir, "*.sln") || HasFile(dir, "*.slnx"))
                 {
                     reason = $"solution (*.sln) at {dir.FullName}";
                     return dir.FullName;
@@ -43,19 +48,28 @@ namespace ReadmeSync.Services
                     return dir.FullName;
                 }
 
-                // Priority 4: Python/Node specific markers
-                if (File.Exists(Path.Combine(dir.FullName, "setup.py")) ||
-                    File.Exists(Path.Combine(dir.FullName, "pyproject.toml")) ||
-                    File.Exists(Path.Combine(dir.FullName, "package.json")))
+                // Priority 4: Language specific project files
+                string[] projectFiles = { "setup.py", "pyproject.toml", "package.json", "composer.json", "go.mod", "pom.xml", "build.gradle", "build.gradle.kts" };
+                if (projectFiles.Any(f => File.Exists(Path.Combine(dir.FullName, f))))
                 {
                     reason = $"project file at {dir.FullName}";
                     return dir.FullName;
                 }
-
-                dir = dir.Parent;
             }
 
             return null;
+        }
+
+        private static bool HasFile(DirectoryInfo dir, string pattern)
+        {
+            try
+            {
+                return Directory.EnumerateFiles(dir.FullName, pattern).Any();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return false;
+            }
         }
     }
 }
