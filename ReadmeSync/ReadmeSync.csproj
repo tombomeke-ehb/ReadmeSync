@@ -4,6 +4,11 @@
 		<OutputType>Exe</OutputType>
 		<TargetFramework>net8.0</TargetFramework>
 		<RootNamespace>ReadmeSync</RootNamespace>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+
+		<!-- Run on newer runtimes when .NET 8 is not installed -->
+		<RollForward>Major</RollForward>
 
 		<!-- CLI tool packaging -->
 		<PackAsTool>true</PackAsTool>
@@ -11,11 +16,13 @@
 
 		<!-- Package metadata -->
 		<PackageId>ReadmeSync</PackageId>
-		<Version>1.4.0</Version>
+		<Version>1.5.0</Version>
 		<Authors>Tombomeke Studios</Authors>
 		<Company>Tombomeke Studios</Company>
-		<Description>A lightweight C# CLI tool that auto-generates README or ROADMAP files based on your project's structure. Now with PHP, Python and TypeScript support!</Description>
-		<PackageTags>readme roadmap csharp java php python typescript documentation cli generator tombomeke</PackageTags>
+		<Copyright>© 2025-2026 Tombomeke Studios</Copyright>
+		<Description>A lightweight CLI tool that generates and updates README or ROADMAP files from your source code: namespaces, types, public methods, doc comments and TODOs. Supports C#, Java, Kotlin, Python, TypeScript, JavaScript, PHP and Go, with JSON export and a --check mode for CI.</Description>
+		<PackageTags>readme roadmap documentation cli generator dotnet-tool csharp java kotlin python typescript javascript php go todo tombomeke</PackageTags>
+		<PackageReleaseNotes>See https://github.com/tombomeke-ehb/ReadmeSync/blob/main/CHANGELOG.md</PackageReleaseNotes>
 
 		<!-- License & URLs -->
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -39,6 +46,10 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\ReadmeSync.Core\ReadmeSync.Core.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Spectre.Console" Version="0.50.0" />
 	</ItemGroup>
 
 </Project>

@@ -38,3 +38,8 @@ publish/
 
 # JetBrains Rider files
 *.DotSettings.user
+
+# Test results and coverage
+TestResults/
+coverage/
+coveragereport/

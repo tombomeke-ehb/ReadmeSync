@@ -1,264 +1,142 @@
-﻿using System;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Text;
+using ReadmeSync.Cli;
 using ReadmeSync.Models;
 using ReadmeSync.Services;
 
-#nullable enable
-
 // ============================================================================
-// ReadmeSync.cs
+// ReadmeSync
 // ----------------------------------------------------------------------------
-// A command-line tool that scans your source code and auto-generates or updates
-// a README or ROADMAP file based on namespaces/packages, classes, public methods,
-// and // TODO comments.
+// A command-line tool that scans your source code and generates or updates a
+// README or ROADMAP file with an overview of its namespaces, types, public
+// methods, documentation comments and open TODO notes.
 //
-// Features
-// - Supports multiple languages: C#, Java, Python, TypeScript, JavaScript
-// - Detects repository root automatically (.git, .sln, README.md, LICENSE)
-// - Keeps manual content above marker intact
-// - Creates structured markdown summaries of the codebase
-// - Supports optional GitHub URL linking
-// - Optional emoji icons in output (disabled by default)
+// Everything outside the generated section of the output file is left alone,
+// so the tool is safe to run as often as you like.
 //
-// Usage
-//   readmesync [--lang csharp|java|python|typescript|javascript|php] [--use-emojis] [--json] [--exclude folders] [--no-tracking] [scan-root] [output-file] [optional-repo-url]
-//
-// Example:
-//   readmesync --lang java ./src README.md https://github.com/tombomeke-ehb/ReadmeSync
-//   readmesync --lang python . README.md
-//   readmesync --use-emojis . README.md
-//   readmesync --json . roadmap.json
-//
-// Notes
-// - Safe to run multiple times; it only replaces content *below* the marker
-// - Compatible with .NET 8.0+
-// - Emojis are disabled by default for a more professional output
+// Run "readmesync --help" for the options.
 //
 // © 2025 Tombomeke Studios — All rights reserved
-// ============================================================
+// ============================================================================
 
 namespace ReadmeSync
 {
     public class Program
     {
-        static void Main(string[] args)
+        public static int Main(string[] args)
         {
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("ReadmeSync – Automatically update README or ROADMAP with code overview");
-            Console.WriteLine("Made by tombomeke Studios");
-            Console.ResetColor();
-            Console.WriteLine("--------------------------------------------------------------------------\n");
-
             try
             {
-                // ============================================================
-                // 1️ Parse CLI Arguments
-                // ============================================================
-                if (args.Length == 0)
-                {
-                    ShowUsage();
-                    return;
-                }
-
-                var config = ParseArguments(args);
-
-                // ============================================================
-                // 2️ Initialize Services
-                // ============================================================
-                var repoFinder = new RepoRootFinder();
-                var analyzer = new CodeAnalyzer();
-                var markdownGen = new MarkdownGenerator();
-                var jsonGen = new JsonGenerator();
-                var telemetry = new TelemetryService();
-
-                // ============================================================
-                // 3️ Resolve Paths
-                // ============================================================
-                string scanRoot = ResolveScanRoot(config.Args);
-                string repoRoot = repoFinder.FindRepoRoot(scanRoot, out var reason) ?? scanRoot;
-                string outputFile = ResolveOutputFile(config.Args, repoRoot);
-                string repoUrl = config.Args.Length > 2 ? config.Args[2].TrimEnd('/') : string.Empty;
-
-                Directory.CreateDirectory(Path.GetDirectoryName(outputFile)!);
-
-                // ============================================================
-                // 4️ Get Language Configuration
-                // ============================================================
-                var patterns = LanguagePatterns.For(config.Language);
-                string fileExt = patterns.Extension;
-
-                // Start telemetry (non-blocking)
-                Task? telemetryTask = null;
-                if (!config.NoTracking)
-                {
-                    telemetryTask = telemetry.SendTelemetryAsync(config.Language);
-                }
-
-                Console.WriteLine($"Language: {config.Language}");
-                Console.WriteLine($"Scanning directory: {scanRoot}");
-                Console.WriteLine($"Repo root:         {repoRoot}");
-                Console.WriteLine($"Detected by:       {reason ?? "(no marker; using scanRoot)"}");
-                Console.WriteLine($"Output file:       {outputFile}\n");
-
-                // ============================================================
-                // 5️ Scan Files
-                // ============================================================
-                var codeFiles = Directory.GetFiles(scanRoot, $"*{fileExt}", SearchOption.AllDirectories)
-                    .Where(f => !config.Excludes.Any(ex =>
-                        f.Contains($"{Path.DirectorySeparatorChar}{ex}{Path.DirectorySeparatorChar}") ||
-                        f.EndsWith($"{Path.DirectorySeparatorChar}{ex}")))
-                    .ToArray();
-
-                if (codeFiles.Length == 0)
-                {
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine($"No {fileExt} files found in project.");
-                    Console.ResetColor();
-                    return;
-                }
-
-                // ============================================================
-                // 6️ Analyze Source Files
-                // ============================================================
-                var files = codeFiles
-                    .Select(f =>
-                    {
-                        string text = File.ReadAllText(f);
-                        var info = analyzer.AnalyzeCode(text, patterns, config.Language);
-                        if (info == null) return null;
-
-                        // Build relative path and optional link
-                        string rel = Path.GetRelativePath(repoRoot, f).Replace(Path.DirectorySeparatorChar, '/');
-                        string? fileUrl = repoUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-                            ? $"{repoUrl}/{rel}"
-                            : null;
-
-                        info.Path = rel;
-                        info.Link = fileUrl;
-                        return info;
-                    })
-                    .Where(f => f != null)
-                    .GroupBy(f => f.Namespace)
-                    .OrderBy(g => g.Key)
-                    .ToList();
-
-                // ============================================================
-                // 7️ Generate Output (Markdown or JSON)
-                // ============================================================
-                if (config.OutputJson)
-                {
-                    jsonGen.GenerateJson(outputFile, files);
-                }
-                else
-                {
-                    markdownGen.GenerateMarkdown(
-                        outputFile,
-                        files,
-                        config.Language,
-                        fileExt,
-                        config.UseEmojis,
-                        repoUrl
-                    );
-                }
-
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("\nReadmeSync completed successfully!");
-                Console.ResetColor();
-                Console.WriteLine($"Output file: {Path.GetFullPath(outputFile)}\n");
-
-                // Wait for telemetry (max 1.5 seconds)
-                if (telemetryTask != null)
-                {
-                    Task.WaitAny(telemetryTask, Task.Delay(1500));
-                }
+                Console.OutputEncoding = Encoding.UTF8;
             }
-            catch (Exception ex)
+            catch (IOException)
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("❌ An unexpected error occurred:");
-                Console.WriteLine(ex.Message);
-                Console.ResetColor();
+                // No console attached; the default encoding will do.
             }
-        }
 
-        // ============================================================
-        // Helper Methods
-        // ============================================================
-
-        private static void ShowUsage()
-        {
-            Console.WriteLine("Usage:");
-            Console.WriteLine("  readmesync [--lang csharp|java|python|typescript|javascript|php] [--use-emojis] [--json] [--exclude folders] [--no-tracking] [scan-root] [output-file] [optional-repo-url]");
-            Console.WriteLine("\nExamples:");
-            Console.WriteLine("  readmesync . README.md");
-            Console.WriteLine("  readmesync --lang java ./src ROADMAP.md https://github.com/USER/REPO");
-            Console.WriteLine("  readmesync --lang python ./app README.md");
-            Console.WriteLine("  readmesync --lang typescript ./src DOCS.md");
-            Console.WriteLine("  readmesync --use-emojis . README.md");
-            Console.WriteLine("  readmesync --json . roadmap.json\n");
-        }
-
-        private static Config ParseArguments(string[] args)
-        {
-            var config = new Config();
-
-            // Parse --lang
-            int langIndex = Array.IndexOf(args, "--lang");
-            if (langIndex != -1 && langIndex + 1 < args.Length)
+            CliOptions options;
+            try
             {
-                config.Language = args[langIndex + 1].ToLowerInvariant();
-                args = args.Where((x, i) => i != langIndex && i != langIndex + 1).ToArray();
+                options = CliOptions.Parse(args);
             }
-
-            // Parse --exclude
-            int excludeIndex = Array.IndexOf(args, "--exclude");
-            if (excludeIndex != -1 && excludeIndex + 1 < args.Length)
+            catch (CliException ex)
             {
-                config.Excludes = args[excludeIndex + 1].Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
-                args = args.Where((x, i) => i != excludeIndex && i != excludeIndex + 1).ToArray();
+                WriteError(ex.Message);
+                Console.Error.WriteLine("Run 'readmesync --help' to see the options.");
+                return Runner.ExitError;
             }
 
-            // Parse flags
-            config.NoTracking = args.Contains("--no-tracking");
-            config.UseEmojis = args.Contains("--use-emojis");
-            config.OutputJson = args.Contains("--json");
+            if (options.Version)
+            {
+                Console.WriteLine(TelemetryService.GetToolVersion());
+                return Runner.ExitOk;
+            }
 
-            args = args.Where(x => x != "--no-tracking" && x != "--use-emojis" && x != "--json").ToArray();
-            config.Args = args;
+            if (options.Help)
+            {
+                WriteBanner(Console.Out);
+                Console.WriteLine(CliOptions.Usage());
+                return Runner.ExitOk;
+            }
 
-            return config;
+            if (options.Init)
+                return InitSettingsFile();
+
+            // Without arguments the interactive mode starts, unless there is nobody to interact with.
+            bool interactive = options.Tui ||
+                (args.Length == 0 && !Console.IsInputRedirected && !Console.IsOutputRedirected);
+
+            if (interactive)
+            {
+                InteractiveMode.Run();
+                return Runner.ExitOk;
+            }
+
+            return Execute(options);
         }
 
-        private static string ResolveScanRoot(string[] args)
+        /// <summary>
+        /// Resolves the settings and runs one generation. Returns the process exit code.
+        /// </summary>
+        public static int Execute(CliOptions options, bool showBanner = true)
         {
-            string scanRoot = ".";
+            try
+            {
+                var settings = RunSettings.Resolve(options, Directory.GetCurrentDirectory());
 
-            if (args.Length > 0 && Directory.Exists(args[0]))
-                scanRoot = args[0];
-            else if (args.Length > 1 && Directory.Exists(args[1]))
-                scanRoot = args[1];
+                // In dry-run mode standard output carries the document, so messages go to standard error.
+                TextWriter log = settings.Quiet ? TextWriter.Null : settings.DryRun ? Console.Error : Console.Out;
+                if (showBanner)
+                    WriteBanner(log);
 
-            return Path.GetFullPath(scanRoot);
+                Task? telemetry = null;
+                if (!settings.NoTracking && !TelemetryService.IsDisabledByEnvironment())
+                    telemetry = new TelemetryService().SendTelemetryAsync(string.Join(",", settings.Languages));
+
+                int exitCode = Runner.Run(settings, Console.Out, log);
+
+                // Give telemetry a moment to finish, but never hold the user up for it.
+                telemetry?.Wait(TimeSpan.FromMilliseconds(1500));
+                return exitCode;
+            }
+            catch (Exception ex) when (ex is CliException or ArgumentException or IOException or UnauthorizedAccessException)
+            {
+                WriteError(ex.Message);
+                return Runner.ExitError;
+            }
         }
 
-        private static string ResolveOutputFile(string[] args, string repoRoot)
+        private static int InitSettingsFile()
         {
-            if (args.Length > 1)
-                return Path.IsPathRooted(args[1]) ? args[1] : Path.Combine(repoRoot, args[1]);
+            string path = Path.Combine(Directory.GetCurrentDirectory(), AppSettings.FileName);
+            if (File.Exists(path))
+            {
+                WriteError($"{AppSettings.FileName} already exists in this directory.");
+                return Runner.ExitError;
+            }
 
-            return Path.Combine(repoRoot, "README.md");
+            File.WriteAllText(path, AppSettings.CreateTemplate());
+            Console.WriteLine($"Created {path}");
+            return Runner.ExitOk;
         }
 
-        private class Config
+        private static void WriteBanner(TextWriter writer)
         {
-            public string Language { get; set; } = "csharp";
-            public string[] Excludes { get; set; } = { "bin", "obj", "node_modules", ".git", ".vs", "__pycache__", "dist", "build" };
-            public bool NoTracking { get; set; } = false;
-            public bool UseEmojis { get; set; } = false;
-            public bool OutputJson { get; set; } = false;
-            public string[] Args { get; set; } = Array.Empty<string>();
+            if (writer == TextWriter.Null)
+                return;
+
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            writer.WriteLine($"ReadmeSync {TelemetryService.GetToolVersion()} – Automatically update README or ROADMAP with code overview");
+            writer.WriteLine("Made by tombomeke Studios");
+            Console.ResetColor();
+            writer.WriteLine("--------------------------------------------------------------------------");
+            writer.WriteLine();
+        }
+
+        private static void WriteError(string message)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.Error.WriteLine($"Error: {message}");
+            Console.ResetColor();
         }
     }
 }
